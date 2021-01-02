@@ -7,6 +7,7 @@ import org.harsh.utils.DBUtils;
 import javax.servlet.ServletContext;
 import javax.ws.rs.*;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import java.sql.Connection;
 
@@ -14,25 +15,26 @@ import java.sql.Connection;
 public class Details {
     @DELETE
     @Path("/{id}")
-    public Response deleteUser(@PathParam("id") int id, @Context ServletContext context) {
-        Connection connection = (Connection) context.getAttribute(DBUtils.DB_CONTEXT);
-        AuthService service = new AuthService(connection);
+    public Response deleteUser(@PathParam("id") int id) {
+        AuthService service = new AuthService();
         return service.deleteUser(id);
     }
 
     @PUT
     @Path("/{id}")
-    public Response updateUser(@PathParam("id") int id, @Context ServletContext context, UserInfo user) {
-        Connection connection = (Connection) context.getAttribute(DBUtils.DB_CONTEXT);
-        AuthService service = new AuthService(connection);
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response updateUser(@PathParam("id") int id, UserInfo user) {
+        AuthService service = new AuthService();
         return service.updateUser(id, user);
     }
 
     @GET
     @Path("/{id}")
+    @Produces(MediaType.APPLICATION_JSON)
+    @Consumes(MediaType.APPLICATION_JSON)
     public Response getUser(@PathParam("id") int id, @Context ServletContext context) {
-        Connection dbConnection = (Connection) context.getAttribute(DBUtils.DB_CONTEXT);
-        AuthService service = new AuthService(dbConnection);
+        AuthService service = new AuthService();
         return service.getUserById(id);
     }
 }

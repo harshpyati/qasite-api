@@ -11,6 +11,7 @@ public class MyResource {
 
     @GET
     public String getIt() {
+        System.out.println("Test Log");
         return "Got it bruh!!";
     }
 }
