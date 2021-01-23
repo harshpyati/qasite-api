@@ -9,8 +9,12 @@ import java.util.logging.Logger;
 
 @ApplicationPath("resources")
 public class AppResourceConfig extends ResourceConfig {
-    public AppResourceConfig() {
+    private void ApplicationInit(){
         packages("org.harsh");
+        register(org.harsh.filters.CorsFilter.class);
+    }
+    public AppResourceConfig() {
+        ApplicationInit();
         register(new LoggingFeature(Logger.getLogger(LoggingFeature.DEFAULT_LOGGER_NAME), Level.INFO, LoggingFeature.Verbosity.PAYLOAD_ANY, 10000));
     }
 }

@@ -5,17 +5,19 @@ import org.harsh.utils.DBUtils;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
 import javax.servlet.annotation.WebListener;
+import javax.ws.rs.ext.Provider;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 
+@Provider
 public class ServletContextClass implements ServletContextListener {
     public static Connection connection;
 
     public static void getConnection() {
         try {
             connection = DriverManager.getConnection(DBUtils.DB_URL, DBUtils.DB_UNAME, DBUtils.DB_PWD);
-            System.out.println("Connected to database successfully");
+            System.out.println("Connected to database successfully from Servlet Context class");
         } catch (SQLException ex) {
             System.out.println(ex.getErrorCode());
             System.out.println(ex.getMessage());

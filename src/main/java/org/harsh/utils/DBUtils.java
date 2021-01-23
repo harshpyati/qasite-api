@@ -1,9 +1,10 @@
 package org.harsh.utils;
 
+import org.harsh.domain.UserInfo;
+
+import javax.ws.rs.WebApplicationException;
 import java.security.SecureRandom;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
+import java.sql.*;
 import java.util.Base64;
 
 public class DBUtils {
@@ -33,6 +34,22 @@ public class DBUtils {
                 DB_UNAME,
                 DB_PWD
         );
+    }
 
+    public static UserInfo getUserDetails(String accessToken) throws SQLException {
+        UserInfo currentUser = null;
+        String sql = "select id,email from authdetails where access_token='" + accessToken + "';";
+        try (Connection connection = getDBConnection(); Statement statement = connection.createStatement()) {
+            ResultSet rs = statement.executeQuery(sql);
+            while (rs.next()) {
+                currentUser = new UserInfo();
+                currentUser.setId(rs.getInt("id"));
+                currentUser.setEmail(rs.getString("email"));
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            throw new WebApplicationException(ex.getMessage());
+        }
+        return currentUser;
     }
 }
