@@ -3,6 +3,8 @@ package org.harsh.utils;
 import org.harsh.domain.UserInfo;
 
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.container.ContainerRequestContext;
+import javax.ws.rs.core.HttpHeaders;
 import java.security.SecureRandom;
 import java.sql.*;
 import java.util.Base64;
@@ -51,5 +53,9 @@ public class DBUtils {
             throw new WebApplicationException(ex.getMessage());
         }
         return currentUser;
+    }
+
+    public static String getAccessToken(ContainerRequestContext context){
+        return context.getHeaderString(HttpHeaders.AUTHORIZATION).substring("Bearer".length()).trim();
     }
 }

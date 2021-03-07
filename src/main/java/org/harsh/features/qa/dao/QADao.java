@@ -1,14 +1,20 @@
 package org.harsh.features.qa.dao;
 
+import lombok.extern.slf4j.Slf4j;
+import org.harsh.domain.Answer;
 import org.harsh.domain.AuthorInfo;
 import org.harsh.domain.QuestionDetails;
+import org.harsh.domain.UserInfo;
+import org.harsh.features.authentication.service.AuthService;
 import org.harsh.utils.DBUtils;
 
 import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Response;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 public class QADao {
     public QADao() {
 
@@ -67,7 +73,7 @@ public class QADao {
         return questions;
     }
 
-    public QuestionDetails getQuestionById(int id) {
+    public QuestionDetails getQuestionById(long id) {
         String sql = "select q.id, q.question, q.upvotes, q.downvotes, q.answers, a.authorid, u.name from questions q" +
                 " inner join authorinfo a on q.id=a.questionid" +
                 " inner join users u on a.authorid=u.id where q.id = " + id + ";";
@@ -143,5 +149,65 @@ public class QADao {
         } catch (SQLException ex) {
             ex.printStackTrace();
         }
+    }
+
+    public List<Answer> fetchAnswersForQuestion(long questionId, Integer start, Integer limit) {
+        StringBuilder sql = new StringBuilder
+                ("select answerId, answer, upvotes, downvotes, authorid from answers where questionid=" + questionId);
+        if (start != null) {
+            sql.append(" and answerId >= ").append(start);
+        }
+
+        if (limit != null && limit != 0) {
+            sql.append(" limit ").append(limit);
+        }
+        log.debug("SQL to fetch answers: {}-{}", questionId, sql.toString());
+        System.out.println("SQL to fetch Anwers for question id" + questionId + " :" + sql);
+        List<Answer> answers = new ArrayList<>();
+        try (Connection connection = DBUtils.getDBConnection(); Statement stmnt = connection.createStatement()) {
+            ResultSet rs = stmnt.executeQuery(sql.toString());
+            while (rs.next()) {
+                Answer newAnswer = new Answer();
+                newAnswer.setQuestionId(questionId);
+                newAnswer.setAnswerId(rs.getInt("answerId"));
+                newAnswer.setAnswer(rs.getString("answer"));
+                newAnswer.setNumUpVotes(rs.getLong("upvotes"));
+                newAnswer.setNumDownVotes(rs.getLong("downvotes"));
+                AuthorInfo info = new AuthorInfo();
+                info.setId(rs.getInt("authorid"));
+                AuthService srvc = new AuthService();
+                Response user = srvc.getUserById(info.getId());
+                UserInfo userInfo = (UserInfo) user.getEntity();
+                info.setName(userInfo.getName());
+                answers.add(newAnswer);
+            }
+
+            return answers;
+        } catch (SQLException ex) {
+            throw new WebApplicationException(ex.getMessage(), ex.getErrorCode());
+        }
+    }
+
+    public Answer answerQuestion(Answer answer) {
+        String sql = "insert into answers(answer, questionid,authorid) values ('" + answer.getAnswer() + "'," + answer.getQuestionId() + "," + answer.getAuthor().getId() + ");";
+        System.out.println("SQL to insert answer: {}" + sql);
+        try (Connection connection = DBUtils.getDBConnection(); PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            int rows = statement.executeUpdate();
+            if (rows == 1) {
+                ResultSet rs = statement.getGeneratedKeys();
+                if (rs.next()){
+                    int answerId = rs.getInt(1);
+                    answer.setAnswerId(answerId);
+                    answer.setNumUpVotes(0);
+                    answer.setNumDownVotes(0);
+                }else {
+                    throw new WebApplicationException("Insert Failed");
+                }
+            }
+        } catch (SQLException ex) {
+            throw new WebApplicationException(ex.getMessage(), ex.getErrorCode());
+        }
+
+        return answer;
     }
 }
