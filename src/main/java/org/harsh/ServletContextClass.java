@@ -1,10 +1,9 @@
 package org.harsh;
 
-import org.harsh.utils.DBUtils;
+import org.harsh.utils.db.DBUtils;
 
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
-import javax.servlet.annotation.WebListener;
 import javax.ws.rs.ext.Provider;
 import java.sql.Connection;
 import java.sql.DriverManager;
