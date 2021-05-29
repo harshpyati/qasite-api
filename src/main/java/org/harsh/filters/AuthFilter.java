@@ -1,7 +1,7 @@
 package org.harsh.filters;
 
 import org.harsh.filters.annotations.Secured;
-import org.harsh.utils.DBUtils;
+import org.harsh.utils.db.DBUtils;
 
 import javax.annotation.Priority;
 import javax.ws.rs.Priorities;

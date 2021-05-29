@@ -1,41 +1,58 @@
 package org.harsh.filters;
 
-import javax.ws.rs.container.ContainerRequestContext;
-import javax.ws.rs.container.ContainerRequestFilter;
-import javax.ws.rs.container.ContainerResponseContext;
-import javax.ws.rs.container.ContainerResponseFilter;
+import javax.ws.rs.container.*;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.ext.Provider;
 import java.io.IOException;
 
 @Provider
+@PreMatching
 public class CorsFilter implements ContainerRequestFilter, ContainerResponseFilter {
 
+    /**
+     * Method for ContainerRequestFilter.
+     */
     @Override
-    public void filter(ContainerRequestContext containerRequestContext) throws IOException {
-        System.out.println("Checking if it is a preflight request");
-        if (isPreflightRequest(containerRequestContext)) {
-            containerRequestContext.abortWith(Response.ok().build());
+    public void filter(ContainerRequestContext request) throws IOException {
+        // If it's a preflight request, we abort the request with
+        // a 200 status, and the CORS headers are added in the
+        // response filter method below.
+        if (isPreflightRequest(request)) {
+            request.abortWith(Response.ok().build());
             return;
         }
     }
 
+    /**
+     * A preflight request is an OPTIONS request
+     * with an Origin header.
+     */
+    private static boolean isPreflightRequest(ContainerRequestContext request) {
+        return request.getHeaderString("Origin") != null
+                && request.getMethod().equalsIgnoreCase("OPTIONS");
+    }
+
+    /**
+     * Method for ContainerResponseFilter.
+     */
     @Override
-    public void filter(ContainerRequestContext containerRequestContext, ContainerResponseContext containerResponseContext) throws IOException {
+    public void filter(ContainerRequestContext request, ContainerResponseContext response)
+            throws IOException {
+
         // if there is no Origin header, then it is not a
         // cross origin request. We don't do anything.
-        System.out.println("filter impl");
-        if (containerRequestContext.getHeaderString("Origin") == null) {
+        if (request.getHeaderString("Origin") == null) {
             return;
         }
 
         // If it is a preflight request, then we add all
         // the CORS headers here.
-        if (isPreflightRequest(containerRequestContext)) {
-            containerResponseContext.getHeaders().add("Access-Control-Allow-Credentials", "true");
-            containerResponseContext.getHeaders().add("Access-Control-Allow-Methods",
+        if (isPreflightRequest(request)) {
+            System.out.println("Is PreFlight Request: Yes");
+            response.getHeaders().add("Access-Control-Allow-Credentials", "true");
+            response.getHeaders().add("Access-Control-Allow-Methods",
                     "GET, POST, PUT, DELETE, OPTIONS, HEAD");
-            containerResponseContext.getHeaders().add("Access-Control-Allow-Headers",
+            response.getHeaders().add("Access-Control-Allow-Headers",
                     // Whatever other non-standard/safe headers (see list above)
                     // you want the client to be able to send to the server,
                     // put it in this list. And remove the ones you don't want.
@@ -47,12 +64,7 @@ public class CorsFilter implements ContainerRequestFilter, ContainerResponseFilt
         // or preflight request. We need to add this header
         // to both type of requests. Only preflight requests
         // need the previously added headers.
-        containerResponseContext.getHeaders().add("Access-Control-Allow-Origin", "*");
+        response.getHeaders().add("Access-Control-Allow-Origin", "http://localhost:3000");
+        System.out.println(response.getHeaders());
     }
-
-    private static boolean isPreflightRequest(ContainerRequestContext requestContext) {
-        return requestContext.getHeaderString("Origin") != null && requestContext.getMethod().equalsIgnoreCase("OPTIONS");
-    }
-
-
 }
