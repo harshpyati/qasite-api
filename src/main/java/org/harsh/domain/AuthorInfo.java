@@ -1,4 +1,4 @@
-package org.harsh.features.domain;
+package org.harsh.domain;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,5 +9,5 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class AuthorInfo {
     String name;
-    int id;
+    long id;
 }

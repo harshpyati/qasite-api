@@ -1,11 +1,12 @@
-package org.harsh.features.daos;
+package org.harsh.daos;
 
 import lombok.extern.slf4j.Slf4j;
-import org.harsh.features.domain.Answer;
-import org.harsh.features.domain.AuthorInfo;
-import org.harsh.features.domain.QuestionDetails;
-import org.harsh.features.domain.UserInfo;
-import org.harsh.features.services.AuthService;
+import org.harsh.domain.Answer;
+import org.harsh.domain.AuthorInfo;
+import org.harsh.domain.QuestionDetails;
+import org.harsh.domain.UserInfo;
+import org.harsh.services.UserService;
+import org.harsh.utils.ValidationUtils;
 import org.harsh.utils.db.DBUtils;
 
 import javax.ws.rs.WebApplicationException;
@@ -17,7 +18,7 @@ import java.util.List;
 @Slf4j
 public class QADao {
 
-    public QuestionDetails postQuestion(QuestionDetails details, int userId) {
+    public QuestionDetails postQuestion(QuestionDetails details, long userId) {
         String sql = "insert into questions(question) values('" + details.getQuestions() + "');";
         try (Connection dbConnection = DBUtils.getDBConnection();
              PreparedStatement statement = dbConnection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -42,10 +43,15 @@ public class QADao {
         return details;
     }
 
-    public List<QuestionDetails> getQuestions() {
+    public List<QuestionDetails> getQuestions(String title) {
         String sql = "select q.id, q.question, q.upvotes, q.downvotes, q.answers, a.authorid, u.name from questions q" +
                 " inner join authorinfo a on q.id=a.questionid" +
-                " inner join users u on a.authorid=u.id;";
+                " inner join users u on a.authorid=u.id ";
+
+        if (ValidationUtils.isNotNull(title) && !title.isEmpty()){
+            sql += " where to_tsvector('english',q.question) @@ to_tsquery('english','" + title + "');";
+        }
+
         System.out.println("Fetch Questions: " + sql);
         List<QuestionDetails> questions = new ArrayList<>();
         try (Connection dbConn = DBUtils.getDBConnection(); Statement statement = dbConn.createStatement()) {
@@ -148,6 +154,16 @@ public class QADao {
         }
     }
 
+    public void updateNumAnswers(long questionId){
+        String sql = "update questions set answers = answers + 1 where id=" + questionId +";";
+        try(Connection connection = DBUtils.getDBConnection(); Statement stmnt = connection.createStatement()){
+            int rows = stmnt.executeUpdate(sql);
+            System.out.println("No of rows updated : "  + rows);
+        }catch (SQLException ex){
+            ex.printStackTrace();
+        }
+    }
+
     public List<Answer> fetchAnswersForQuestion(long questionId, Integer start, Integer limit) {
         StringBuilder sql = new StringBuilder
                 ("select answerId, answer, upvotes, downvotes, authorid from answers where questionid=" + questionId);
@@ -172,7 +188,7 @@ public class QADao {
                 newAnswer.setNumDownVotes(rs.getLong("downvotes"));
                 AuthorInfo info = new AuthorInfo();
                 info.setId(rs.getInt("authorid"));
-                AuthService srvc = new AuthService();
+                UserService srvc = new UserService();
                 Response user = srvc.getUserById(info.getId());
                 UserInfo userInfo = (UserInfo) user.getEntity();
                 info.setName(userInfo.getName());
@@ -180,6 +196,35 @@ public class QADao {
             }
 
             return answers;
+        } catch (SQLException ex) {
+            throw new WebApplicationException(ex.getMessage(), ex.getErrorCode());
+        }
+    }
+    public Answer fetchAnswerById(long questionId, long answerId) {
+        StringBuilder sql = new StringBuilder
+                ("select answerId, answer, upvotes, downvotes, authorid from answers where questionid = " + questionId + " and answerid = " + answerId);
+
+        log.debug("SQL to fetch answers: {}-{}", questionId, sql.toString());
+        System.out.println("SQL to fetch Anwers for question id" + questionId + " :" + sql);
+        Answer newAnswer = new Answer();
+        try (Connection connection = DBUtils.getDBConnection(); Statement stmnt = connection.createStatement()) {
+            ResultSet rs = stmnt.executeQuery(sql.toString());
+            while (rs.next()) {
+                newAnswer.setQuestionId(questionId);
+                newAnswer.setAnswerId(rs.getInt("answerId"));
+                newAnswer.setAnswer(rs.getString("answer"));
+                newAnswer.setNumUpVotes(rs.getLong("upvotes"));
+                newAnswer.setNumDownVotes(rs.getLong("downvotes"));
+                AuthorInfo info = new AuthorInfo();
+                info.setId(rs.getInt("authorid"));
+                UserService srvc = new UserService();
+                Response user = srvc.getUserById(info.getId());
+                UserInfo userInfo = (UserInfo) user.getEntity();
+                info.setName(userInfo.getName());
+                newAnswer.setAuthor(info);
+            }
+
+            return newAnswer;
         } catch (SQLException ex) {
             throw new WebApplicationException(ex.getMessage(), ex.getErrorCode());
         }
@@ -204,7 +249,8 @@ public class QADao {
         } catch (SQLException ex) {
             throw new WebApplicationException(ex.getMessage(), ex.getErrorCode());
         }
-
+        // update num answers for the question by 1
+        updateNumAnswers(answer.getQuestionId());
         return answer;
     }
 }

@@ -1,4 +1,4 @@
-package org.harsh.features.domain;
+package org.harsh.domain;
 import lombok.Data;
 
 @Data

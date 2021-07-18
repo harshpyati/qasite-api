@@ -1,6 +1,6 @@
 package org.harsh.utils.db;
 
-import org.harsh.features.domain.UserInfo;
+import org.harsh.domain.UserInfo;
 
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.container.ContainerRequestContext;

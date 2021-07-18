@@ -1,11 +1,11 @@
-package org.harsh.features.services;
+package org.harsh.services;
 
 import lombok.extern.slf4j.Slf4j;
-import org.harsh.features.domain.Answer;
-import org.harsh.features.domain.AuthorInfo;
-import org.harsh.features.domain.QuestionDetails;
-import org.harsh.features.domain.UserInfo;
-import org.harsh.features.daos.QADao;
+import org.harsh.domain.Answer;
+import org.harsh.domain.AuthorInfo;
+import org.harsh.domain.QuestionDetails;
+import org.harsh.domain.UserInfo;
+import org.harsh.daos.QADao;
 import org.harsh.utils.db.DBUtils;
 
 import javax.ws.rs.WebApplicationException;
@@ -29,43 +29,45 @@ public class QAService {
         }
     }
 
-    public QuestionDetails addQuestion(QuestionDetails details, String accessToken) {
+    public Response addQuestion(QuestionDetails details, String accessToken) {
         try {
             validateQuestion(details);
             details.setNumAnswers(0);
             details.setNumDownVotes(0);
             details.setNumUpVotes(0);
             UserInfo userInfo = DBUtils.getUserDetails(accessToken);
-            return dao.postQuestion(details, userInfo.getId());
+            QuestionDetails postedQuestion = dao.postQuestion(details, userInfo.getId());
+            return Response.ok().entity(postedQuestion).build();
         } catch (Exception exception) {
-            exception.printStackTrace();
-            throw new WebApplicationException(Response.Status.BAD_REQUEST);
+            throw new WebApplicationException("Failed to add the question", Response.Status.INTERNAL_SERVER_ERROR);
         }
     }
 
-    public List<QuestionDetails> getQuestions() {
+    public Response getQuestions(String title) {
         try {
-            return dao.getQuestions();
+            List<QuestionDetails> questions = dao.getQuestions(title);
+            return Response.ok().entity(questions).build();
         } catch (Exception ex) {
             throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
         }
     }
 
-    public QuestionDetails getQuestionById(long id) {
+    public Response getQuestionById(long id) {
         try {
             QuestionDetails details = dao.getQuestionById(id);
             if (details == null) {
                 throw new Exception("Question with id: " + id + " not found");
             }
-            return details;
+            return Response.ok().entity(details).build();
         } catch (Exception ex) {
             throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
         }
     }
 
-    public List<QuestionDetails> getQuestionsByAuthor(int authorId) {
+    public Response getQuestionsByAuthor(int authorId) {
         try {
-            return dao.getQuestionsByAuthor(authorId);
+            List<QuestionDetails> details = dao.getQuestionsByAuthor(authorId);
+            return Response.ok().entity(details).build();
         } catch (Exception ex) {
             throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
         }
@@ -90,18 +92,29 @@ public class QAService {
         }
     }
 
-    public List<Answer> getAnswers(long questionId, int start, int limit) {
+    public Response getAnswers(long questionId, int start, int limit) {
         try {
-            return dao.fetchAnswersForQuestion(questionId, start, limit);
+            List<Answer> answers = dao.fetchAnswersForQuestion(questionId, start, limit);
+            return Response.ok().entity(answers).build();
         } catch (Exception ex) {
             ex.printStackTrace();
             throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
         }
     }
 
-    public Answer answerQuestion(long questionId, Answer answer, String accessToken) {
+    public Response getAnswerById(long questionId,long answerId) {
         try {
-            QuestionDetails question = getQuestionById(questionId);
+            Answer answer = dao.fetchAnswerById(questionId, answerId);
+            return Response.ok().entity(answer).build();
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
+        }
+    }
+
+    public Response answerQuestion(long questionId, Answer answer, String accessToken) {
+        try {
+            QuestionDetails question = getQuestionById(questionId).readEntity(QuestionDetails.class);
             if (question == null) {
                 throw new WebApplicationException("Question with Id = " + questionId + " doesn't exists", Response.Status.BAD_REQUEST);
             }
@@ -110,7 +123,8 @@ public class QAService {
             AuthorInfo info = new AuthorInfo();
             info.setId(user.getId());
             answer.setAuthor(info);
-            return dao.answerQuestion(answer);
+            Answer postedAnswer = dao.answerQuestion(answer);
+            return Response.ok().entity(postedAnswer).build();
         } catch (Exception ex) {
             ex.printStackTrace();
             throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
