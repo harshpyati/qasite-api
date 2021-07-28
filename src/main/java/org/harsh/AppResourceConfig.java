@@ -10,6 +10,7 @@ import java.util.logging.Logger;
 public class AppResourceConfig extends ResourceConfig {
     private void ApplicationInit(){
         packages("org.harsh");
+        register(new ApplicationBinder());
         register(CorsFilter.class);
     }
     public AppResourceConfig() {

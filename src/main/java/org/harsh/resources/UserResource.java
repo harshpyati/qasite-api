@@ -2,6 +2,7 @@ package org.harsh.resources;
 
 import org.harsh.domain.LoginBody;
 import org.harsh.domain.UserInfo;
+import org.harsh.services.QAService;
 import org.harsh.services.UserService;
 import org.harsh.filters.annotations.Secured;
 
@@ -16,7 +17,11 @@ import javax.ws.rs.core.Response;
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
 public class UserResource {
-    UserService service = new UserService();
+    @Inject
+    UserService service;
+
+    @Inject
+    QAService qaService;
 
     @POST
     @Path("/signup")
@@ -63,7 +68,7 @@ public class UserResource {
     @Path("/validate")
     public Response validateUser(@QueryParam("token") String token) {
         try {
-            if (token == null){
+            if (token == null) {
                 return Response.status(400).build();
             }
             boolean flag = service.validateToken(token);

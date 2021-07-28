@@ -1,10 +1,7 @@
 package org.harsh.daos;
 
 import lombok.extern.slf4j.Slf4j;
-import org.harsh.domain.Answer;
-import org.harsh.domain.AuthorInfo;
-import org.harsh.domain.QuestionDetails;
-import org.harsh.domain.UserInfo;
+import org.harsh.domain.*;
 import org.harsh.services.UserService;
 import org.harsh.utils.ValidationUtils;
 import org.harsh.utils.db.DBUtils;
@@ -43,13 +40,21 @@ public class QADao {
         return details;
     }
 
-    public List<QuestionDetails> getQuestions(String title) {
+    public List<QuestionDetails> getQuestions(String title, Long id, Integer authorId) {
         String sql = "select q.id, q.question, q.upvotes, q.downvotes, q.answers, a.authorid, u.name from questions q" +
                 " inner join authorinfo a on q.id=a.questionid" +
                 " inner join users u on a.authorid=u.id ";
 
-        if (ValidationUtils.isNotNull(title) && !title.isEmpty()){
-            sql += " where to_tsvector('english',q.question) @@ to_tsquery('english','" + title + "');";
+        if (ValidationUtils.isNotNull(title) && !title.isEmpty()) {
+            sql += " where to_tsvector('english',q.question) @@ to_tsquery('english','" + title + "')";
+        }
+
+        if (id != null){
+            sql += " where q.id = " + id;
+        }
+
+        if (authorId != null){
+            sql += " where u.id = " + authorId;
         }
 
         System.out.println("Fetch Questions: " + sql);
@@ -76,60 +81,29 @@ public class QADao {
         return questions;
     }
 
-    public QuestionDetails getQuestionById(long id) {
-        String sql = "select q.id, q.question, q.upvotes, q.downvotes, q.answers, a.authorid, u.name from questions q" +
-                " inner join authorinfo a on q.id=a.questionid" +
-                " inner join users u on a.authorid=u.id where q.id = " + id + ";";
-        System.out.println("Get QUESTION by id: " + sql);
-        QuestionDetails details = null;
-        try (Connection dbConn = DBUtils.getDBConnection(); Statement statement = dbConn.createStatement()) {
-            ResultSet rs = statement.executeQuery(sql);
-            while (rs.next()) {
-                details = new QuestionDetails();
-                details.setId(rs.getInt("id"));
-                details.setQuestions(rs.getString("question"));
-                details.setNumUpVotes(rs.getLong("upvotes"));
-                details.setNumDownVotes(rs.getLong("downvotes"));
-                details.setNumAnswers(rs.getLong("answers"));
-                AuthorInfo info = new AuthorInfo();
-                info.setId(rs.getInt("authorid"));
-                info.setName(rs.getString("name"));
-                details.setAuthor(info);
-            }
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-            throw new WebApplicationException(ex.getMessage());
+    public QuestionDetails getQuestionById(Long id) {
+        List<QuestionDetails> questions = getQuestions(null, id, null);
+        if (questions == null || questions.isEmpty()){
+            throw new WebApplicationException("Question doesn't exists", Response.Status.BAD_REQUEST);
         }
-
-        return details;
+        return questions.get(0);
     }
 
     public List<QuestionDetails> getQuestionsByAuthor(int authorId) {
-        String sql = "select q.id, q.question, q.upvotes, q.downvotes, q.answers, a.authorid, u.name from questions q" +
-                " inner join authorinfo a on q.id=a.questionid" +
-                " inner join users u on a.authorid=u.id where u.id=" + authorId + ";";
-        System.out.println("Fetch Questions: " + sql);
-        List<QuestionDetails> questions = new ArrayList<>();
-        try (Connection dbConn = DBUtils.getDBConnection(); Statement statement = dbConn.createStatement()) {
-            ResultSet rs = statement.executeQuery(sql);
-            while (rs.next()) {
-                QuestionDetails details = new QuestionDetails();
-                details.setId(rs.getInt("id"));
-                details.setQuestions(rs.getString("question"));
-                details.setNumUpVotes(rs.getLong("upvotes"));
-                details.setNumDownVotes(rs.getLong("downvotes"));
-                details.setNumAnswers(rs.getLong("answers"));
-                AuthorInfo info = new AuthorInfo();
-                info.setId(rs.getInt("authorid"));
-                info.setName(rs.getString("name"));
-                details.setAuthor(info);
-                questions.add(details);
-            }
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-            throw new WebApplicationException(ex.getMessage());
+        List<QuestionDetails> questionDetails = getQuestions(null, null, authorId);
+        if (questionDetails == null || questionDetails.isEmpty()){
+            throw new WebApplicationException("This author hasn't asked any questions", Response.Status.BAD_REQUEST);
         }
-        return questions;
+
+        return questionDetails;
+    }
+
+    public List<Answer> getAnswersByAuthorId(int authorId) {
+        List<Answer> answersByAuthor = fetchAnswersForQuestion(null, null, null, null, authorId);
+        if (answersByAuthor == null || answersByAuthor.isEmpty()) {
+            throw new WebApplicationException("This author hasn't written any answer", Response.Status.BAD_REQUEST);
+        }
+        return answersByAuthor;
     }
 
     public void updateUpVotes(int questionId) {
@@ -154,44 +128,63 @@ public class QADao {
         }
     }
 
-    public void updateNumAnswers(long questionId){
-        String sql = "update questions set answers = answers + 1 where id=" + questionId +";";
-        try(Connection connection = DBUtils.getDBConnection(); Statement stmnt = connection.createStatement()){
+    public void updateNumAnswers(long questionId) {
+        String sql = "update questions set answers = answers + 1 where id=" + questionId + ";";
+        try (Connection connection = DBUtils.getDBConnection(); Statement stmnt = connection.createStatement()) {
             int rows = stmnt.executeUpdate(sql);
-            System.out.println("No of rows updated : "  + rows);
-        }catch (SQLException ex){
+            System.out.println("No of rows updated : " + rows);
+        } catch (SQLException ex) {
             ex.printStackTrace();
         }
     }
 
-    public List<Answer> fetchAnswersForQuestion(long questionId, Integer start, Integer limit) {
-        StringBuilder sql = new StringBuilder
-                ("select answerId, answer, upvotes, downvotes, authorid from answers where questionid=" + questionId);
-        if (start != null) {
-            sql.append(" and answerId >= ").append(start);
+    public List<Answer> fetchAnswersForQuestion(Long questionId, Integer start, Integer limit, Long answerId, Integer authorId) {
+        StringBuilder fetchAnswersSql = new StringBuilder("select a.answerId, a.answer, a.upvotes, a.downvotes, u.id, u.name, q.id, q.question" +
+                " from answers as a inner join users u on a.authorid = u.id" +
+                " inner join questions q on a.questionid = q.id");
+
+        if (questionId != null) {
+            fetchAnswersSql.append(" where a.questionid = ").append(questionId);
+        }
+
+        if (authorId != null) {
+            fetchAnswersSql.append(" where a.authorid = ").append(authorId);
+        }
+
+        if (start != null && start != 0) {
+            fetchAnswersSql.append(" and answerId >= ").append(start);
+        }
+
+        if (answerId != null) {
+            fetchAnswersSql.append(" and a.answerId = ").append(answerId);
         }
 
         if (limit != null && limit != 0) {
-            sql.append(" limit ").append(limit);
+            fetchAnswersSql.append(" limit ").append(limit);
         }
-        log.debug("SQL to fetch answers: {}-{}", questionId, sql.toString());
-        System.out.println("SQL to fetch Anwers for question id" + questionId + " :" + sql);
+        log.debug("SQL to fetch answers: {}-{}", questionId, fetchAnswersSql.toString());
+        System.out.println("SQL to fetch Anwers for question id" + questionId + " :" + fetchAnswersSql);
         List<Answer> answers = new ArrayList<>();
         try (Connection connection = DBUtils.getDBConnection(); Statement stmnt = connection.createStatement()) {
-            ResultSet rs = stmnt.executeQuery(sql.toString());
+            ResultSet rs = stmnt.executeQuery(fetchAnswersSql.toString());
             while (rs.next()) {
                 Answer newAnswer = new Answer();
-                newAnswer.setQuestionId(questionId);
-                newAnswer.setAnswerId(rs.getInt("answerId"));
+
+                newAnswer.setAnswerId(rs.getLong("answerId"));
                 newAnswer.setAnswer(rs.getString("answer"));
                 newAnswer.setNumUpVotes(rs.getLong("upvotes"));
                 newAnswer.setNumDownVotes(rs.getLong("downvotes"));
-                AuthorInfo info = new AuthorInfo();
-                info.setId(rs.getInt("authorid"));
-                UserService srvc = new UserService();
-                Response user = srvc.getUserById(info.getId());
-                UserInfo userInfo = (UserInfo) user.getEntity();
-                info.setName(userInfo.getName());
+
+                EntityRef user = new EntityRef();
+                user.setId(rs.getInt("id"));
+                user.setName(rs.getString("name"));
+                newAnswer.setAuthor(user);
+
+                EntityRef question = new EntityRef();
+                question.setId(rs.getInt("id"));
+                question.setName(rs.getString("question"));
+                newAnswer.setQuestion(question);
+
                 answers.add(newAnswer);
             }
 
@@ -200,49 +193,28 @@ public class QADao {
             throw new WebApplicationException(ex.getMessage(), ex.getErrorCode());
         }
     }
+
     public Answer fetchAnswerById(long questionId, long answerId) {
-        StringBuilder sql = new StringBuilder
-                ("select answerId, answer, upvotes, downvotes, authorid from answers where questionid = " + questionId + " and answerid = " + answerId);
-
-        log.debug("SQL to fetch answers: {}-{}", questionId, sql.toString());
-        System.out.println("SQL to fetch Anwers for question id" + questionId + " :" + sql);
-        Answer newAnswer = new Answer();
-        try (Connection connection = DBUtils.getDBConnection(); Statement stmnt = connection.createStatement()) {
-            ResultSet rs = stmnt.executeQuery(sql.toString());
-            while (rs.next()) {
-                newAnswer.setQuestionId(questionId);
-                newAnswer.setAnswerId(rs.getInt("answerId"));
-                newAnswer.setAnswer(rs.getString("answer"));
-                newAnswer.setNumUpVotes(rs.getLong("upvotes"));
-                newAnswer.setNumDownVotes(rs.getLong("downvotes"));
-                AuthorInfo info = new AuthorInfo();
-                info.setId(rs.getInt("authorid"));
-                UserService srvc = new UserService();
-                Response user = srvc.getUserById(info.getId());
-                UserInfo userInfo = (UserInfo) user.getEntity();
-                info.setName(userInfo.getName());
-                newAnswer.setAuthor(info);
-            }
-
-            return newAnswer;
-        } catch (SQLException ex) {
-            throw new WebApplicationException(ex.getMessage(), ex.getErrorCode());
+        List<Answer> answers = fetchAnswersForQuestion(questionId, null, null, answerId, null);
+        if (answers == null || answers.isEmpty()) {
+            throw new WebApplicationException("Invalid answer id", Response.Status.BAD_REQUEST);
         }
+        return answers.get(0);
     }
 
     public Answer answerQuestion(Answer answer) {
-        String sql = "insert into answers(answer, questionid,authorid) values ('" + answer.getAnswer() + "'," + answer.getQuestionId() + "," + answer.getAuthor().getId() + ");";
+        String sql = "insert into answers(answer, questionid,authorid) values ('" + answer.getAnswer() + "'," + answer.getQuestion().getId() + "," + answer.getAuthor().getId() + ");";
         System.out.println("SQL to insert answer: {}" + sql);
         try (Connection connection = DBUtils.getDBConnection(); PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             int rows = statement.executeUpdate();
             if (rows == 1) {
                 ResultSet rs = statement.getGeneratedKeys();
-                if (rs.next()){
+                if (rs.next()) {
                     int answerId = rs.getInt(1);
                     answer.setAnswerId(answerId);
                     answer.setNumUpVotes(0);
                     answer.setNumDownVotes(0);
-                }else {
+                } else {
                     throw new WebApplicationException("Insert Failed");
                 }
             }
@@ -250,7 +222,7 @@ public class QADao {
             throw new WebApplicationException(ex.getMessage(), ex.getErrorCode());
         }
         // update num answers for the question by 1
-        updateNumAnswers(answer.getQuestionId());
+        updateNumAnswers(answer.getQuestion().getId());
         return answer;
     }
 }
