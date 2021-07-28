@@ -1,5 +1,6 @@
 package org.harsh.utils;
 
+import java.util.Collection;
 import java.util.Random;
 
 public class ValidationUtils {
@@ -8,6 +9,7 @@ public class ValidationUtils {
     public static boolean isNullOrEmpty(String input) {
         return input == null || input.isEmpty();
     }
+
     public static boolean isNull(Object obj) {
         return obj == null;
     }

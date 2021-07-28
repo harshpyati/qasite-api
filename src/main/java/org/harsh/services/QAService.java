@@ -1,10 +1,7 @@
 package org.harsh.services;
 
 import lombok.extern.slf4j.Slf4j;
-import org.harsh.domain.Answer;
-import org.harsh.domain.AuthorInfo;
-import org.harsh.domain.QuestionDetails;
-import org.harsh.domain.UserInfo;
+import org.harsh.domain.*;
 import org.harsh.daos.QADao;
 import org.harsh.utils.db.DBUtils;
 
@@ -32,9 +29,6 @@ public class QAService {
     public Response addQuestion(QuestionDetails details, String accessToken) {
         try {
             validateQuestion(details);
-            details.setNumAnswers(0);
-            details.setNumDownVotes(0);
-            details.setNumUpVotes(0);
             UserInfo userInfo = DBUtils.getUserDetails(accessToken);
             QuestionDetails postedQuestion = dao.postQuestion(details, userInfo.getId());
             return Response.ok().entity(postedQuestion).build();
@@ -45,7 +39,7 @@ public class QAService {
 
     public Response getQuestions(String title) {
         try {
-            List<QuestionDetails> questions = dao.getQuestions(title);
+            List<QuestionDetails> questions = dao.getQuestions(title, null, null);
             return Response.ok().entity(questions).build();
         } catch (Exception ex) {
             throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
@@ -55,9 +49,6 @@ public class QAService {
     public Response getQuestionById(long id) {
         try {
             QuestionDetails details = dao.getQuestionById(id);
-            if (details == null) {
-                throw new Exception("Question with id: " + id + " not found");
-            }
             return Response.ok().entity(details).build();
         } catch (Exception ex) {
             throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
@@ -69,6 +60,17 @@ public class QAService {
             List<QuestionDetails> details = dao.getQuestionsByAuthor(authorId);
             return Response.ok().entity(details).build();
         } catch (Exception ex) {
+            ex.printStackTrace();
+            throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
+        }
+    }
+
+    public Response getAnswersByAuthorId(int authorId) {
+        try {
+            List<Answer> details = dao.getAnswersByAuthorId(authorId);
+            return Response.ok().entity(details).build();
+        } catch (Exception ex) {
+            ex.printStackTrace();
             throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
         }
     }
@@ -92,9 +94,9 @@ public class QAService {
         }
     }
 
-    public Response getAnswers(long questionId, int start, int limit) {
+    public Response getAnswers(long questionId, Integer start, Integer limit) {
         try {
-            List<Answer> answers = dao.fetchAnswersForQuestion(questionId, start, limit);
+            List<Answer> answers = dao.fetchAnswersForQuestion(questionId, start, limit, null, null);
             return Response.ok().entity(answers).build();
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -102,7 +104,7 @@ public class QAService {
         }
     }
 
-    public Response getAnswerById(long questionId,long answerId) {
+    public Response getAnswerById(long questionId, long answerId) {
         try {
             Answer answer = dao.fetchAnswerById(questionId, answerId);
             return Response.ok().entity(answer).build();
@@ -114,13 +116,13 @@ public class QAService {
 
     public Response answerQuestion(long questionId, Answer answer, String accessToken) {
         try {
-            QuestionDetails question = getQuestionById(questionId).readEntity(QuestionDetails.class);
+            QuestionDetails question = ((QuestionDetails) getQuestionById(questionId).getEntity());
             if (question == null) {
                 throw new WebApplicationException("Question with Id = " + questionId + " doesn't exists", Response.Status.BAD_REQUEST);
             }
-            answer.setQuestionId(questionId);
+            answer.setQuestion(new EntityRef(questionId,""));
             UserInfo user = DBUtils.getUserDetails(accessToken);
-            AuthorInfo info = new AuthorInfo();
+            EntityRef info = new EntityRef();
             info.setId(user.getId());
             answer.setAuthor(info);
             Answer postedAnswer = dao.answerQuestion(answer);
@@ -135,7 +137,7 @@ public class QAService {
         String sql = "delete from answers where questionId = " + questionId + " and answerId = " + answerId + ";";
         try (Connection conn = DBUtils.getDBConnection(); Statement stmnt = conn.createStatement()) {
             int rows = stmnt.executeUpdate(sql);
-            log.debug("Rows: {}",rows);
+            log.debug("Rows: {}", rows);
         } catch (SQLException ex) {
             throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
         }

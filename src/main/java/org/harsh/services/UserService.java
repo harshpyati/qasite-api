@@ -6,7 +6,6 @@ import org.harsh.domain.AuthInfo;
 import org.harsh.domain.LoginBody;
 import org.harsh.domain.UserInfo;
 import org.harsh.daos.UserDao;
-import org.harsh.exceptions.ApiException;
 import org.harsh.utils.db.DBUtils;
 import org.harsh.utils.ValidationUtils;
 
@@ -36,7 +35,7 @@ public class UserService {
         }
     }
 
-    private void validateUserInfo(UserInfo userInfo) throws ApiException {
+    private void validateUserInfo(UserInfo userInfo){
         if (ValidationUtils.isNullOrEmpty(userInfo.getName())) {
             throw new WebApplicationException("Enter a valid name", Response.Status.BAD_REQUEST);
         }
@@ -109,7 +108,6 @@ public class UserService {
     public Response updateUser(int id, UserInfo user) {
         try {
             UserInfo dbUser = userDao.getUserDetails(id);
-            System.out.println("db user: " + dbUser.toString());
             if (isNull(dbUser)) {
                 return Response.status(Response.Status.NOT_FOUND).build();
             } else {

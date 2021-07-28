@@ -13,14 +13,14 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import java.util.List;
 
 @Slf4j
 @Path("/question")
 @Produces(MediaType.APPLICATION_JSON)
 public class QAResource {
 
-    QAService service = new QAService();
+    @Inject
+    QAService service;
 
     @POST
     @Secured
@@ -50,6 +50,13 @@ public class QAResource {
         return service.getQuestionsByAuthor(authorId);
     }
 
+    @GET
+    @Secured
+    @Path("/answer/author/{authorId}")
+    public Response getAnswersByAuthorId(@PathParam("authorId") int authorId){
+        return service.getAnswersByAuthorId(authorId);
+    }
+
     @PATCH
     @Path("/{id}/upvote")
     @Secured
@@ -66,7 +73,7 @@ public class QAResource {
 
     @GET
     @Path("/{questionId}/answers")
-    public Response getAnswers(@PathParam("questionId") long questionId, @QueryParam("start") int start, @QueryParam("limit") int limit) {
+    public Response getAnswers(@PathParam("questionId") long questionId, @QueryParam("start") Integer start, @QueryParam("limit") Integer limit) {
         return service.getAnswers(questionId, start, limit);
     }
 
