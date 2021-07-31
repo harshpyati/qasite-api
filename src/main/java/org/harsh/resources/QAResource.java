@@ -72,7 +72,7 @@ public class QAResource {
             service.updateDownVotes(questionId, accessToken);
         }
     }
-    
+
     @PATCH
     @Path("/{id}/answer/{answerId}/vote")
     @Secured
