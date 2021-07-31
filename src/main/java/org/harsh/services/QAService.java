@@ -136,13 +136,13 @@ public class QAService {
         }
     }
 
-    public void deleteAnswer(long questionId, long answerId) {
-        String sql = "delete from answers where questionId = " + questionId + " and answerId = " + answerId + ";";
-        try (Connection conn = DBUtils.getDBConnection(); Statement stmnt = conn.createStatement()) {
-            int rows = stmnt.executeUpdate(sql);
-            log.debug("Rows: {}", rows);
-        } catch (SQLException ex) {
-            throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
+    public void deleteAnswer(long questionId, long answerId, String accessToken) {
+        try {
+            UserInfo user = DBUtils.getUserDetails(accessToken);
+            dao.deleteAnswer(questionId, answerId, user.getId());
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+            throw new WebApplicationException(ex.getMessage(), Response.Status.INTERNAL_SERVER_ERROR);
         }
     }
 

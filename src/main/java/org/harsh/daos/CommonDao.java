@@ -27,7 +27,7 @@ public class CommonDao {
             if (rows == 1) {
                 ResultSet rs = ps.getGeneratedKeys();
                 if (rs.next()) {
-                    return idType.equals(IdType.LONG) ? Long.valueOf(rs.getLong(1)) : Integer.valueOf(rs.getInt(1));
+                    return rs.getLong(1);
                 }
             }
         } catch (SQLException ex) {

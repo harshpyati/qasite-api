@@ -72,7 +72,7 @@ public class QAResource {
             service.updateDownVotes(questionId, accessToken);
         }
     }
-    
+
     @PATCH
     @Path("/{id}/answer/{answerId}/vote")
     @Secured
@@ -82,13 +82,13 @@ public class QAResource {
                                       @QueryParam("direction") int voteDirection
     ) {
         String accessToken = DBUtils.getAccessToken(ctxt);
-        try{
+        try {
             if (VoteDirection.getByVal(voteDirection).equals(VoteDirection.UP)) {
                 service.updateUpVotesForAnswers(accessToken, questionId, answerId);
             } else {
                 service.updateDownVotesForAnswers(accessToken, questionId, answerId);
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
         }
 
@@ -122,11 +122,12 @@ public class QAResource {
     public Response deleteAnswer(@Context ContainerRequestContext context,
                                  @PathParam("questionId") long questionId,
                                  @PathParam("answerId") long answerId) {
-        QuestionDetails questionDetails = getQuestionById(questionId).readEntity(QuestionDetails.class);
+        QuestionDetails questionDetails = (QuestionDetails) getQuestionById(questionId).getEntity();
         if (questionDetails == null) {
-
+            throw new WebApplicationException("question with id = " + answerId + " doesn't exists", Response.Status.INTERNAL_SERVER_ERROR);
         }
-        service.deleteAnswer(questionId, answerId);
+        String accessToken = DBUtils.getAccessToken(context);
+        service.deleteAnswer(questionId, answerId, accessToken);
         return Response.noContent().build();
     }
 }

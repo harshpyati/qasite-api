@@ -243,4 +243,19 @@ public class QADao extends CommonDao {
         }
         throw new WebApplicationException("failed to answer", Response.Status.INTERNAL_SERVER_ERROR);
     }
+
+    public void deleteAnswer(long questionId, long answerId, long userId) {
+        // only the author can delete the answer
+        Answer answerToBeDeleted = fetchAnswerById(questionId, answerId);
+        if (userId == answerToBeDeleted.getAuthor().getId()) {
+            String sql = "delete from answers where questionId = " + questionId + " and answerId = " + answerId + ";";
+            executeUpdate(sql);
+
+            // update answer count for the question
+            sql = "update questions set answers = answers - 1 where id=" + questionId;
+            executeUpdate(sql);
+        } else {
+            throw new WebApplicationException("you don't have the permissions to delete this answer", Response.Status.BAD_REQUEST);
+        }
+    }
 }
