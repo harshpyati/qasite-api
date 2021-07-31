@@ -72,7 +72,6 @@ public class QAResource {
             service.updateDownVotes(questionId, accessToken);
         }
     }
-    error
     
     @PATCH
     @Path("/{id}/answer/{answerId}/vote")
