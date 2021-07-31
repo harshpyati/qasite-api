@@ -123,7 +123,7 @@ public class QAService {
             if (question == null) {
                 throw new WebApplicationException("Question with Id = " + questionId + " doesn't exists", Response.Status.BAD_REQUEST);
             }
-            answer.setQuestion(new EntityRef(questionId,""));
+            answer.setQuestion(new EntityRef(questionId, ""));
             UserInfo user = DBUtils.getUserDetails(accessToken);
             EntityRef info = new EntityRef();
             info.setId(user.getId());
@@ -141,6 +141,25 @@ public class QAService {
         try (Connection conn = DBUtils.getDBConnection(); Statement stmnt = conn.createStatement()) {
             int rows = stmnt.executeUpdate(sql);
             log.debug("Rows: {}", rows);
+        } catch (SQLException ex) {
+            throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
+        }
+    }
+
+    public void updateUpVotesForAnswers(String accessToken, Long questionId, Long answerId) {
+        try {
+            UserInfo user = DBUtils.getUserDetails(accessToken);
+            dao.updateUpVotesForAnswers(questionId, answerId, user.getId());
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
+        }
+    }
+
+    public void updateDownVotesForAnswers(String accessToken, Long questionId, Long answerId) {
+        try {
+            UserInfo user = DBUtils.getUserDetails(accessToken);
+            dao.updateDownVotesForAnswers(questionId, answerId, user.getId());
         } catch (SQLException ex) {
             throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
         }

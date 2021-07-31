@@ -3,6 +3,7 @@ package org.harsh.resources;
 import lombok.extern.slf4j.Slf4j;
 import org.harsh.domain.Answer;
 import org.harsh.domain.QuestionDetails;
+import org.harsh.domain.VoteDirection;
 import org.harsh.filters.annotations.Secured;
 import org.harsh.services.QAService;
 import org.harsh.utils.db.DBUtils;
@@ -53,24 +54,45 @@ public class QAResource {
     @GET
     @Secured
     @Path("/answer/author/{authorId}")
-    public Response getAnswersByAuthorId(@PathParam("authorId") int authorId){
+    public Response getAnswersByAuthorId(@PathParam("authorId") int authorId) {
         return service.getAnswersByAuthorId(authorId);
     }
 
     @PATCH
-    @Path("/{id}/upvote")
+    @Path("/{id}/vote")
     @Secured
-    public void updateUpVotes(@Context ContainerRequestContext ctxt, @PathParam("id") Long questionId) {
+    public void updateUpVotes(
+            @Context ContainerRequestContext ctxt,
+            @PathParam("id") Long questionId,
+            @QueryParam("direction") int direction) {
         String accessToken = DBUtils.getAccessToken(ctxt);
-        service.updateUpVotes(questionId,accessToken);
+        if (VoteDirection.getByVal(direction).equals(VoteDirection.UP)) {
+            service.updateUpVotes(questionId, accessToken);
+        } else {
+            service.updateDownVotes(questionId, accessToken);
+        }
     }
-
+    error
+    
     @PATCH
-    @Path("/{id}/downvote")
+    @Path("/{id}/answer/{answerId}/vote")
     @Secured
-    public void updateDownVotes(@Context ContainerRequestContext ctxt, @PathParam("id") Long questionId) {
+    public void updateVotesForAnswers(@Context ContainerRequestContext ctxt,
+                                      @PathParam("id") Long questionId,
+                                      @PathParam("answerId") Long answerId,
+                                      @QueryParam("direction") int voteDirection
+    ) {
         String accessToken = DBUtils.getAccessToken(ctxt);
-        service.updateDownVotes(questionId, accessToken);
+        try{
+            if (VoteDirection.getByVal(voteDirection).equals(VoteDirection.UP)) {
+                service.updateUpVotesForAnswers(accessToken, questionId, answerId);
+            } else {
+                service.updateDownVotesForAnswers(accessToken, questionId, answerId);
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
     }
 
     @GET

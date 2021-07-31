@@ -13,6 +13,7 @@ public class CommonDao {
             PreparedStatement ps = con.prepareStatement(sql);
             ps.executeUpdate();
         } catch (SQLException ex) {
+            ex.printStackTrace();
             System.out.println(ex.getMessage());
             throw new WebApplicationException("failed to update", Response.Status.INTERNAL_SERVER_ERROR);
         }

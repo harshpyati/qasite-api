@@ -94,18 +94,49 @@ public class QADao extends CommonDao {
 
     private boolean checkIfEntryExistsInQuestionCount(Long questionId, Long userId, VoteDirection voteDirection) {
         String countSql = "select count(userid) from question_counts where questionid = " + questionId + " and userid = " + userId + " and direction = " + voteDirection.getVal();
-        int count = -1;
+        return getCount(countSql) == 1;
+    }
 
-        try (Connection connection = DBUtils.getDBConnection(); Statement statement = connection.createStatement()) {
-            ResultSet rs = statement.executeQuery(countSql);
+    private boolean checkIfEntryExistsInAnswerCount(Long questionId, Long answerId, Long userId, VoteDirection voteDirection) {
+        String countSql = "select count(userid) from answer_vote_counts where questionid = " + questionId + " and userid = " + userId + " and answerid = " + answerId + " and direction = " + voteDirection.getVal();
+        return getCount(countSql) == 1;
+    }
+
+    private int getCount(String sql) {
+        int count = -1;
+        try (Connection con = DBUtils.getDBConnection(); Statement statement = con.createStatement()) {
+            ResultSet rs = statement.executeQuery(sql);
             if (rs.next()) {
                 count = rs.getInt(1);
             }
-
-            return count == 1;
         } catch (SQLException ex) {
+            ex.printStackTrace();
             System.out.println(ex.getMessage());
             throw new WebApplicationException("failed to fetch count", Response.Status.INTERNAL_SERVER_ERROR);
+        }
+
+        return count;
+    }
+
+    public void updateUpVotesForAnswers(Long questionId, Long answerId, Long userId) {
+        boolean entryExists = checkIfEntryExistsInAnswerCount(questionId, answerId, userId, VoteDirection.UP);
+        if (!entryExists) {
+            String insertToMapperSql = "insert into answer_vote_counts(questionid, answerid, userid, direction) values(" + questionId + "," + answerId + "," + userId + "," + VoteDirection.UP.getVal() + ");";
+            executeUpdate(insertToMapperSql);
+
+            String insertToAnswersSql = "update answers set upvotes = upvotes + 1 where questionid=" + questionId + " and answerid=" + answerId;
+            executeUpdate(insertToAnswersSql);
+        }
+    }
+
+    public void updateDownVotesForAnswers(Long questionId, Long answerId, Long userId) {
+        boolean entryExists = checkIfEntryExistsInAnswerCount(questionId, answerId, userId, VoteDirection.DOWN);
+        if (!entryExists) {
+            String insertToMapperSql = "insert into answer_vote_counts(questionid, answerid, userid, direction) values(" + questionId + "," + answerId + "," + userId + "," + VoteDirection.DOWN.getVal() + ");";
+            executeUpdate(insertToMapperSql);
+
+            String insertToAnswersSql = "update answers set downvotes = downvotes + 1 where questionid=" + questionId + " and answerid=" + answerId;
+            executeUpdate(insertToAnswersSql);
         }
     }
 
