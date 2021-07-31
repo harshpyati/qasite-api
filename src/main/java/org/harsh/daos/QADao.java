@@ -2,7 +2,6 @@ package org.harsh.daos;
 
 import lombok.extern.slf4j.Slf4j;
 import org.harsh.domain.*;
-import org.harsh.services.UserService;
 import org.harsh.utils.ValidationUtils;
 import org.harsh.utils.db.DBUtils;
 
@@ -13,31 +12,18 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
-public class QADao {
+public class QADao extends CommonDao {
 
     public QuestionDetails postQuestion(QuestionDetails details, long userId) {
         String sql = "insert into questions(question) values('" + details.getQuestions() + "');";
-        try (Connection dbConnection = DBUtils.getDBConnection();
-             PreparedStatement statement = dbConnection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
-            int rows = statement.executeUpdate();
-            if (rows == 1) {
-                ResultSet rs = statement.getGeneratedKeys();
-                if (rs.next()) {
-                    int id = rs.getInt(1);
-                    // insert this id and the user id to the authorinfo table
-                    sql = "insert into authorinfo(authorid,questionid) values(" + userId + "," + id + ")";
-                    System.out.println("Insert author details " + sql);
-                    PreparedStatement statement1 = dbConnection.prepareStatement(sql);
-                    int authrows = statement1.executeUpdate();
-                    System.out.println("Num Rows: " + authrows);
-                    details.setId(id);
-                }
-            }
-        } catch (SQLException throwables) {
-            throwables.printStackTrace();
+        Long id = executeUpdateAndReturnId(sql, IdType.INTEGER);
+        if (id != null) {
+            sql = "insert into authorinfo(authorid,questionid) values(" + userId + "," + id + ")";
+            executeUpdate(sql);
+            details.setId(id.intValue());
+            return details;
         }
-        return details;
+        throw new WebApplicationException("failed to insert", Response.Status.INTERNAL_SERVER_ERROR);
     }
 
     public List<QuestionDetails> getQuestions(String title, Long id, Integer authorId) {
@@ -49,11 +35,11 @@ public class QADao {
             sql += " where to_tsvector('english',q.question) @@ to_tsquery('english','" + title + "')";
         }
 
-        if (id != null){
+        if (id != null) {
             sql += " where q.id = " + id;
         }
 
-        if (authorId != null){
+        if (authorId != null) {
             sql += " where u.id = " + authorId;
         }
 
@@ -83,7 +69,7 @@ public class QADao {
 
     public QuestionDetails getQuestionById(Long id) {
         List<QuestionDetails> questions = getQuestions(null, id, null);
-        if (questions == null || questions.isEmpty()){
+        if (questions == null || questions.isEmpty()) {
             throw new WebApplicationException("Question doesn't exists", Response.Status.BAD_REQUEST);
         }
         return questions.get(0);
@@ -91,7 +77,7 @@ public class QADao {
 
     public List<QuestionDetails> getQuestionsByAuthor(int authorId) {
         List<QuestionDetails> questionDetails = getQuestions(null, null, authorId);
-        if (questionDetails == null || questionDetails.isEmpty()){
+        if (questionDetails == null || questionDetails.isEmpty()) {
             throw new WebApplicationException("This author hasn't asked any questions", Response.Status.BAD_REQUEST);
         }
 
@@ -106,35 +92,44 @@ public class QADao {
         return answersByAuthor;
     }
 
-    public void updateUpVotes(int questionId) {
-        String sql = "update questions set upvotes = upvotes + 1 where id=" + questionId + ";";
-        System.out.println("Update upvotes sql : " + sql);
+    private boolean checkIfEntryExistsInQuestionCount(Long questionId, Long userId, VoteDirection voteDirection) {
+        String countSql = "select count(userid) from question_counts where questionid = " + questionId + " and userid = " + userId + " and direction = " + voteDirection.getVal();
+        int count = -1;
+
         try (Connection connection = DBUtils.getDBConnection(); Statement statement = connection.createStatement()) {
-            int rows = statement.executeUpdate(sql);
-            System.out.println("No of rows updated: " + rows);
+            ResultSet rs = statement.executeQuery(countSql);
+            if (rs.next()) {
+                count = rs.getInt(1);
+            }
+
+            return count == 1;
         } catch (SQLException ex) {
-            ex.printStackTrace();
+            System.out.println(ex.getMessage());
+            throw new WebApplicationException("failed to fetch count", Response.Status.INTERNAL_SERVER_ERROR);
         }
     }
 
-    public void updateDownVotes(int questionId) {
-        String sql = "update questions set downvotes = downvotes + 1 where id=" + questionId + ";";
-        System.out.println("Update down votes sql : " + sql);
-        try (Connection connection = DBUtils.getDBConnection(); Statement statement = connection.createStatement()) {
-            int rows = statement.executeUpdate(sql);
-            System.out.println("No of rows updated: " + rows);
-        } catch (SQLException ex) {
-            ex.printStackTrace();
+    public void updateUpVotes(Long questionId, Long userId) {
+        boolean entryExists = checkIfEntryExistsInQuestionCount(questionId, userId, VoteDirection.UP);
+        if (!entryExists) {
+            String insertToMapperSql = "insert into question_counts(questionid,userid,direction) values(" + questionId + "," + userId + "," + VoteDirection.UP.getVal() + ");";
+            executeUpdate(insertToMapperSql);
+            String insertToQuestionsSql = "update questions set upvotes = upvotes + 1 where id=" + questionId;
+            executeUpdate(insertToQuestionsSql);
         }
     }
 
-    public void updateNumAnswers(long questionId) {
-        String sql = "update questions set answers = answers + 1 where id=" + questionId + ";";
-        try (Connection connection = DBUtils.getDBConnection(); Statement stmnt = connection.createStatement()) {
-            int rows = stmnt.executeUpdate(sql);
-            System.out.println("No of rows updated : " + rows);
-        } catch (SQLException ex) {
-            ex.printStackTrace();
+    public void updateDownVotes(Long questionId, Long userId) {
+        // check if entry is in questions_count
+        // if yes, remove it from there
+        // update downvote count for the questions
+        boolean entryExists = checkIfEntryExistsInQuestionCount(questionId, userId, VoteDirection.DOWN);
+        if (!entryExists) {
+            String insertToMapperSql = "insert into question_counts(questionid, userid, direction) values(" + questionId + "," + userId + "," + VoteDirection.DOWN.getVal() + ");";
+            executeUpdate(insertToMapperSql);
+
+            String insertToQuestions = "update questions set downvotes=downvotes+1 where id=" + questionId;
+            executeUpdate(insertToQuestions);
         }
     }
 
@@ -162,7 +157,7 @@ public class QADao {
         if (limit != null && limit != 0) {
             fetchAnswersSql.append(" limit ").append(limit);
         }
-        log.debug("SQL to fetch answers: {}-{}", questionId, fetchAnswersSql.toString());
+        log.debug("SQL to fetch answers: {}-{}", questionId, fetchAnswersSql);
         System.out.println("SQL to fetch Anwers for question id" + questionId + " :" + fetchAnswersSql);
         List<Answer> answers = new ArrayList<>();
         try (Connection connection = DBUtils.getDBConnection(); Statement stmnt = connection.createStatement()) {
@@ -205,24 +200,16 @@ public class QADao {
     public Answer answerQuestion(Answer answer) {
         String sql = "insert into answers(answer, questionid,authorid) values ('" + answer.getAnswer() + "'," + answer.getQuestion().getId() + "," + answer.getAuthor().getId() + ");";
         System.out.println("SQL to insert answer: {}" + sql);
-        try (Connection connection = DBUtils.getDBConnection(); PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            int rows = statement.executeUpdate();
-            if (rows == 1) {
-                ResultSet rs = statement.getGeneratedKeys();
-                if (rs.next()) {
-                    int answerId = rs.getInt(1);
-                    answer.setAnswerId(answerId);
-                    answer.setNumUpVotes(0);
-                    answer.setNumDownVotes(0);
-                } else {
-                    throw new WebApplicationException("Insert Failed");
-                }
-            }
-        } catch (SQLException ex) {
-            throw new WebApplicationException(ex.getMessage(), ex.getErrorCode());
+        Long id = executeUpdateAndReturnId(sql, IdType.LONG);
+        if (id != null) {
+            answer.setAnswerId(id);
+            answer.setNumUpVotes(0);
+            answer.setNumDownVotes(0);
+
+            sql = "update questions set answers = answers + 1 where id=" + answer.getQuestion().getId() + ";";
+            executeUpdate(sql);
+            return answer;
         }
-        // update num answers for the question by 1
-        updateNumAnswers(answer.getQuestion().getId());
-        return answer;
+        throw new WebApplicationException("failed to answer", Response.Status.INTERNAL_SERVER_ERROR);
     }
 }

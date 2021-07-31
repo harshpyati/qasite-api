@@ -60,15 +60,17 @@ public class QAResource {
     @PATCH
     @Path("/{id}/upvote")
     @Secured
-    public void updateUpVotes(@Context ContainerRequestContext ctxt, @PathParam("id") int questionId) {
-        service.updateUpVotes(questionId);
+    public void updateUpVotes(@Context ContainerRequestContext ctxt, @PathParam("id") Long questionId) {
+        String accessToken = DBUtils.getAccessToken(ctxt);
+        service.updateUpVotes(questionId,accessToken);
     }
 
     @PATCH
     @Path("/{id}/downvote")
     @Secured
-    public void updateDownVotes(@Context ContainerRequestContext ctxt, @PathParam("id") int questionId) {
-        service.updateDownVotes(questionId);
+    public void updateDownVotes(@Context ContainerRequestContext ctxt, @PathParam("id") Long questionId) {
+        String accessToken = DBUtils.getAccessToken(ctxt);
+        service.updateDownVotes(questionId, accessToken);
     }
 
     @GET
