@@ -2,52 +2,36 @@ package org.harsh.daos;
 
 import lombok.extern.slf4j.Slf4j;
 import org.harsh.domain.AuthInfo;
+import org.harsh.domain.IdType;
 import org.harsh.domain.UserInfo;
 import org.harsh.utils.db.DBUtils;
 
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import java.sql.*;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 
 @Slf4j
-public class UserDao {
+public class UserDao extends CommonDao {
+
     public long insertUserDetails(UserInfo user) throws Exception {
         DateFormat dobFormat = new SimpleDateFormat("dd/MM/yyyy");
         java.util.Date userDob = dobFormat.parse(user.getDob());
         String sql = "insert into users (name, email,dob, created_at) values ('"
                 + user.getName() + "','" + user.getEmail() + "','" + userDob + "',"
                 + user.getCreatedAt() + ");";
-        long id = -1;
-        System.out.println("SQl: " + sql);
-        try (Connection dbConnection = DBUtils.getDBConnection();
-             PreparedStatement statement = dbConnection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            int rows = statement.executeUpdate();
-            System.out.println("Num Rows: " + rows);
-            if (rows == 1) {
-                ResultSet rs = statement.getGeneratedKeys();
-                if (rs.next()) {
-                    id = rs.getLong(1);
-                    System.out.println("Id:" + id);
-                    // this id is the id in the user details
-                    // use this id and fill the authdetails table
-                    String accessToken = DBUtils.generateAccessToken();
-                    System.out.println("Access Token: " + accessToken);
-                    String authSql = "insert into authdetails(id, email, password, access_token" +
-                            ", access_token_time) values (" + id + ",'" + user.getEmail() + "','"
-                            + user.getEncryptedPwd() + "','" + accessToken + "','" + System.currentTimeMillis() + "');";
-                    try (PreparedStatement stmnt = dbConnection.prepareStatement(authSql)) {
-                        int authRows = stmnt.executeUpdate();
-                        System.out.println("Auth Rows: " + authRows);
-                    }
-                }
-            }
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-            throw new Exception(ex.getMessage());
+        Long id = executeUpdateAndReturnId(sql, IdType.LONG);
+        if (id != null) {
+            String accessToken = DBUtils.generateAccessToken();
+            String authSql = "insert into authdetails(id, email, password, access_token" +
+                    ", access_token_time) values (" + id + ",'" + user.getEmail() + "','"
+                    + user.getEncryptedPwd() + "','" + accessToken + "','" + System.currentTimeMillis() + "');";
+            executeUpdate(authSql);
+
+            return id;
         }
-        System.out.println("Id Returning is: " + id);
-        return id;
+        throw new WebApplicationException("failed to insert", Response.Status.INTERNAL_SERVER_ERROR);
     }
 
     public UserInfo getUserDetails(long id) throws Exception {
@@ -73,30 +57,21 @@ public class UserDao {
         return userInfo;
     }
 
-    public Response deleteUser(int id) throws Exception {
+    public Response deleteUser(int id) {
         String sql = "delete from users where id = " + id + ";";
-        try (Connection connection = DBUtils.getDBConnection();
-             Statement statement = connection.createStatement()) {
-            int affectedRows = statement.executeUpdate(sql);
+        executeUpdate(sql);
 
-            String deleteFromAuthDetails = "delete from authdetails where id = " + id + ";";
-            int rows = statement.executeUpdate(deleteFromAuthDetails);
-            System.out.println("rows: " + rows);
-            return Response.noContent().build();
-        } catch (SQLException ex) {
-            throw new Exception(ex.getMessage());
-        }
+        String deleteFromAuthDetails = "delete from authdetails where id = " + id + ";";
+        executeUpdate(deleteFromAuthDetails);
+
+        return Response.noContent().build();
     }
 
     public UserInfo updateUser(UserInfo userInfo) throws Exception {
-        String sql = "update users set name = '" + userInfo.getName() +"', email='" + userInfo.getEmail() +"' where id = " + userInfo.getId() + ";";
+        String sql = "update users set name = '" + userInfo.getName() + "', email='" + userInfo.getEmail() + "' where id = " + userInfo.getId() + ";";
         System.out.println("update sql: " + sql);
-        try (Connection connection = DBUtils.getDBConnection(); Statement statement = connection.createStatement()) {
-            int rows = statement.executeUpdate(sql);
-            return getUserDetails(userInfo.getId());
-        } catch (SQLException ex) {
-            throw new Exception(ex.getMessage());
-        }
+        executeUpdate(sql);
+        return getUserDetails(userInfo.getId());
     }
 
     public AuthInfo checkIfUserExists(String email, String pwd) throws Exception {
@@ -122,10 +97,6 @@ public class UserDao {
 
     public void updateAuthDetails(int id, String accessToken, long time) {
         String sql = "update authdetails set access_token = '" + accessToken + "',access_token_time='" + time + "' where id = " + id + ";";
-        try (Connection conn = DBUtils.getDBConnection(); Statement statement = conn.createStatement()) {
-            statement.executeUpdate(sql);
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-        }
+        executeUpdate(sql);
     }
 }

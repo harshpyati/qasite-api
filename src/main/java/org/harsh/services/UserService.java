@@ -9,6 +9,7 @@ import org.harsh.daos.UserDao;
 import org.harsh.utils.db.DBUtils;
 import org.harsh.utils.ValidationUtils;
 
+import javax.inject.Inject;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import java.sql.Connection;
@@ -23,19 +24,17 @@ import static org.harsh.utils.ValidationUtils.isNull;
 
 @Slf4j
 public class UserService {
-    private final UserDao userDao;
 
-    public UserService() {
-        userDao = new UserDao();
-    }
+    @Inject
+    UserDao userDao;
 
-    private void validateAdd(UserInfo userInfo){
+    private void validateAdd(UserInfo userInfo) {
         if (ValidationUtils.isNullOrEmpty(userInfo.getPwd())) {
             throw new WebApplicationException("Enter a valid password", Response.Status.BAD_REQUEST);
         }
     }
 
-    private void validateUserInfo(UserInfo userInfo){
+    private void validateUserInfo(UserInfo userInfo) {
         if (ValidationUtils.isNullOrEmpty(userInfo.getName())) {
             throw new WebApplicationException("Enter a valid name", Response.Status.BAD_REQUEST);
         }
@@ -70,8 +69,8 @@ public class UserService {
             if (id != -1) {
                 user = userDao.getUserDetails(id);
                 return Response.ok().entity(user).build();
-            }else {
-                throw new WebApplicationException("Failed to insert user details",Response.Status.INTERNAL_SERVER_ERROR);
+            } else {
+                throw new WebApplicationException("Failed to insert user details", Response.Status.INTERNAL_SERVER_ERROR);
             }
         } catch (Exception e) {
             e.printStackTrace();

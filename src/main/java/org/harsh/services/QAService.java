@@ -1,10 +1,13 @@
 package org.harsh.services;
 
+import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.harsh.domain.*;
 import org.harsh.daos.QADao;
 import org.harsh.utils.db.DBUtils;
 
+import javax.inject.Inject;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import java.sql.Connection;
@@ -14,11 +17,9 @@ import java.util.List;
 
 @Slf4j
 public class QAService {
-    QADao dao;
 
-    public QAService() {
-        dao = new QADao();
-    }
+    @Inject
+    QADao dao;
 
     public void validateQuestion(QuestionDetails details) throws WebApplicationException {
         if (details.getQuestions() == null) {
@@ -75,20 +76,22 @@ public class QAService {
         }
     }
 
-    public void updateUpVotes(int questionId) {
+    public void updateUpVotes(Long questionId, String accessToken) {
         try {
             // if already upvoted, then stay as it is
             // else upvote
             // use stored proc here
-            dao.updateUpVotes(questionId);
+            UserInfo user = DBUtils.getUserDetails(accessToken);
+            dao.updateUpVotes(questionId, user.getId());
         } catch (Exception ex) {
             throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
         }
     }
 
-    public void updateDownVotes(int questionId) {
+    public void updateDownVotes(Long questionId, String accessToken) {
         try {
-            dao.updateDownVotes(questionId);
+            UserInfo user = DBUtils.getUserDetails(accessToken);
+            dao.updateDownVotes(questionId, user.getId());
         } catch (Exception ex) {
             throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
         }
