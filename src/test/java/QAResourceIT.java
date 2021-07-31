@@ -164,7 +164,7 @@ public class QAResourceIT {
 
     @AfterTest
     public void logoutUser() {
-
+        // this can be done only on client side
     }
 
     @DataProvider
