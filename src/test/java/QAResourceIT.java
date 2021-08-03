@@ -1,3 +1,5 @@
+import org.glassfish.jersey.client.HttpUrlConnectorProvider;
+import org.glassfish.jersey.client.internal.HttpUrlConnector;
 import org.harsh.domain.*;
 import org.testng.annotations.AfterTest;
 import org.testng.annotations.BeforeTest;
@@ -129,11 +131,12 @@ public class QAResourceIT {
     }
 
     // no functionality present to modify question
-    // @Test(dependsOnMethods = "getQuestionById")
+    @Test(dependsOnMethods = "addQuestion")
     public void modifyQuestion() {
         assert question != null;
         String url = BASE_URL_FOR_QA + "/" + question.getId();
         question.setQuestions("Can you explain Nuclear Physics in 2 mins?");
+
         Response response = target
                 .path(url)
                 .request()
@@ -146,9 +149,10 @@ public class QAResourceIT {
     }
 
     // functionality not present yet
-    // @Test(dependsOnMethods = "getQuestionById")
+    //
     // have to soft delete the question
-    public void deleteQuestions() {
+    @Test(dependsOnMethods = "addQuestion")
+    public void deleteQuestion() {
         assert question != null;
         String url = BASE_URL_FOR_QA + "/" + question.getId();
         Response response = target

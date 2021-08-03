@@ -37,4 +37,20 @@ public class CommonDao {
 
         return null;
     }
+
+    public int getCount(String sql) {
+        int count = -1;
+        try (Connection con = DBUtils.getDBConnection(); Statement statement = con.createStatement()) {
+            ResultSet rs = statement.executeQuery(sql);
+            if (rs.next()) {
+                count = rs.getInt(1);
+            }
+        } catch (SQLException ex) {
+            ex.printStackTrace();
+            System.out.println(ex.getMessage());
+            throw new WebApplicationException("failed to fetch count", Response.Status.INTERNAL_SERVER_ERROR);
+        }
+
+        return count;
+    }
 }

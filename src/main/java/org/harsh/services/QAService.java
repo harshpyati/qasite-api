@@ -1,18 +1,15 @@
 package org.harsh.services;
 
-import lombok.AllArgsConstructor;
-import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.harsh.domain.*;
 import org.harsh.daos.QADao;
+import org.harsh.utils.ValidationUtils;
 import org.harsh.utils.db.DBUtils;
 
 import javax.inject.Inject;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
-import java.sql.Connection;
 import java.sql.SQLException;
-import java.sql.Statement;
 import java.util.List;
 
 @Slf4j
@@ -38,7 +35,7 @@ public class QAService {
         }
     }
 
-    public Response getQuestions(String title) {
+    public Response getQuestions(String title, String tag) {
         try {
             List<QuestionDetails> questions = dao.getQuestions(title, null, null);
             return Response.ok().entity(questions).build();
@@ -49,7 +46,7 @@ public class QAService {
 
     public Response getQuestionById(long id) {
         try {
-            QuestionDetails details = dao.getQuestionById(id);
+            QuestionDetails details = dao.fetchQuestionById(id);
             return Response.ok().entity(details).build();
         } catch (Exception ex) {
             throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
@@ -162,6 +159,41 @@ public class QAService {
             dao.updateDownVotesForAnswers(questionId, answerId, user.getId());
         } catch (SQLException ex) {
             throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
+        }
+    }
+
+    public void deleteQuestion(String accessToken, Long questionId) {
+        try {
+            UserInfo user = DBUtils.getUserDetails(accessToken);
+            dao.deleteQuestion(questionId, user.getId());
+        } catch (SQLException ex) {
+            throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
+        }
+    }
+
+    public Response modifyQuestion(String accessToken, Long questionId, QuestionDetails questionDetails) {
+        try {
+            if (ValidationUtils.isNullOrEmpty(questionDetails.getQuestions())) {
+                throw new WebApplicationException("invalid text", Response.Status.BAD_REQUEST);
+            }
+            UserInfo user = DBUtils.getUserDetails(accessToken);
+            dao.modifyQuestion(questionId, user.getId(), questionDetails.getQuestions());
+            return Response.ok().entity(dao.fetchQuestionById(questionId)).build();
+        } catch (SQLException ex) {
+            throw new WebApplicationException(ex.getMessage(), Response.Status.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    public Response modifyAnswer(String accessToken, Long answerId, Long questionId, Answer answer) {
+        try {
+            if (ValidationUtils.isNullOrEmpty(answer.getAnswer())) {
+                throw new WebApplicationException("invalid text", Response.Status.BAD_REQUEST);
+            }
+            UserInfo user = DBUtils.getUserDetails(accessToken);
+            dao.modifyAnswer(questionId, answerId, user.getId(), answer.getAnswer());
+            return Response.ok().entity(dao.fetchQuestionById(questionId)).build();
+        } catch (SQLException ex) {
+            throw new WebApplicationException(ex.getMessage(), Response.Status.INTERNAL_SERVER_ERROR);
         }
     }
 }

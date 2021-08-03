@@ -33,8 +33,9 @@ public class QAResource {
 
     @GET
     @Secured
-    public Response getQuestions(@QueryParam("title") String title) {
-        return service.getQuestions(title != null ? title : "");
+    public Response getQuestions(@QueryParam("title") String title,
+                                 @QueryParam("tag") String tag) {
+        return service.getQuestions(title != null ? title : "", tag);
     }
 
     @GET
@@ -94,6 +95,29 @@ public class QAResource {
 
     }
 
+    @PUT
+    @Path("/{questionId}")
+    public Response modifyQuestion(
+            @Context ContainerRequestContext context,
+            @PathParam("questionId") Long questionId,
+            QuestionDetails question
+    ) {
+        String accessToken = DBUtils.getAccessToken(context);
+        return service.modifyQuestion(accessToken, questionId, question);
+    }
+
+    @PUT
+    @Path("/{questionId}/answers/{answerId}")
+    public Response modifyAnswer(
+            @Context ContainerRequestContext context,
+            @PathParam("questionId") Long questionId,
+            @PathParam("answerId") Long answerId,
+            Answer answer
+    ) {
+        String accessToken = DBUtils.getAccessToken(context);
+        return service.modifyAnswer(accessToken, answerId, questionId, answer);
+    }
+
     @GET
     @Path("/{questionId}/answers")
     public Response getAnswers(@PathParam("questionId") long questionId, @QueryParam("start") Integer start, @QueryParam("limit") Integer limit) {
@@ -124,10 +148,24 @@ public class QAResource {
                                  @PathParam("answerId") long answerId) {
         QuestionDetails questionDetails = (QuestionDetails) getQuestionById(questionId).getEntity();
         if (questionDetails == null) {
-            throw new WebApplicationException("question with id = " + answerId + " doesn't exists", Response.Status.INTERNAL_SERVER_ERROR);
+            throw new WebApplicationException("question with id = " + questionId + " doesn't exists", Response.Status.BAD_REQUEST);
         }
         String accessToken = DBUtils.getAccessToken(context);
         service.deleteAnswer(questionId, answerId, accessToken);
+        return Response.noContent().build();
+    }
+
+    @DELETE
+    @Path("{questionId}")
+    @Secured
+    public Response deleteQuestion(@Context ContainerRequestContext context,
+                                   @PathParam("questionId") long questionId) {
+        QuestionDetails questionDetails = (QuestionDetails) getQuestionById(questionId).getEntity();
+        if (questionDetails == null) {
+            throw new WebApplicationException("question with id = " + questionId + " doesn't exists", Response.Status.BAD_REQUEST);
+        }
+        String accessToken = DBUtils.getAccessToken(context);
+        service.deleteQuestion(accessToken, questionId);
         return Response.noContent().build();
     }
 }

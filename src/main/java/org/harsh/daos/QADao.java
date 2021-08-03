@@ -29,20 +29,19 @@ public class QADao extends CommonDao {
     public List<QuestionDetails> getQuestions(String title, Long id, Integer authorId) {
         String sql = "select q.id, q.question, q.upvotes, q.downvotes, q.answers, a.authorid, u.name from questions q" +
                 " inner join authorinfo a on q.id=a.questionid" +
-                " inner join users u on a.authorid=u.id ";
+                " inner join users u on a.authorid=u.id where q.deleted='f' ";
 
         if (ValidationUtils.isNotNull(title) && !title.isEmpty()) {
-            sql += " where to_tsvector('english',q.question) @@ to_tsquery('english','" + title + "')";
+            sql += " and to_tsvector('english',q.question) @@ to_tsquery('english','" + title + "')";
         }
 
         if (id != null) {
-            sql += " where q.id = " + id;
+            sql += " and q.id = " + id;
         }
 
         if (authorId != null) {
-            sql += " where u.id = " + authorId;
+            sql += " and u.id = " + authorId;
         }
-
         System.out.println("Fetch Questions: " + sql);
         List<QuestionDetails> questions = new ArrayList<>();
         try (Connection dbConn = DBUtils.getDBConnection(); Statement statement = dbConn.createStatement()) {
@@ -67,7 +66,7 @@ public class QADao extends CommonDao {
         return questions;
     }
 
-    public QuestionDetails getQuestionById(Long id) {
+    public QuestionDetails fetchQuestionById(Long id) {
         List<QuestionDetails> questions = getQuestions(null, id, null);
         if (questions == null || questions.isEmpty()) {
             throw new WebApplicationException("Question doesn't exists", Response.Status.BAD_REQUEST);
@@ -100,22 +99,6 @@ public class QADao extends CommonDao {
     private boolean checkIfEntryExistsInAnswerCount(Long questionId, Long answerId, Long userId, VoteDirection voteDirection) {
         String countSql = "select count(userid) from answer_vote_counts where questionid = " + questionId + " and userid = " + userId + " and answerid = " + answerId + " and direction = " + voteDirection.getVal();
         return getCount(countSql) == 1;
-    }
-
-    private int getCount(String sql) {
-        int count = -1;
-        try (Connection con = DBUtils.getDBConnection(); Statement statement = con.createStatement()) {
-            ResultSet rs = statement.executeQuery(sql);
-            if (rs.next()) {
-                count = rs.getInt(1);
-            }
-        } catch (SQLException ex) {
-            ex.printStackTrace();
-            System.out.println(ex.getMessage());
-            throw new WebApplicationException("failed to fetch count", Response.Status.INTERNAL_SERVER_ERROR);
-        }
-
-        return count;
     }
 
     public void updateUpVotesForAnswers(Long questionId, Long answerId, Long userId) {
@@ -167,14 +150,14 @@ public class QADao extends CommonDao {
     public List<Answer> fetchAnswersForQuestion(Long questionId, Integer start, Integer limit, Long answerId, Integer authorId) {
         StringBuilder fetchAnswersSql = new StringBuilder("select a.answerId, a.answer, a.upvotes, a.downvotes, u.id, u.name, q.id, q.question" +
                 " from answers as a inner join users u on a.authorid = u.id" +
-                " inner join questions q on a.questionid = q.id");
+                " inner join questions q on a.questionid = q.id where q.deleted='f' and a.deleted='f' ");
 
         if (questionId != null) {
-            fetchAnswersSql.append(" where a.questionid = ").append(questionId);
+            fetchAnswersSql.append(" and a.questionid = ").append(questionId);
         }
 
         if (authorId != null) {
-            fetchAnswersSql.append(" where a.authorid = ").append(authorId);
+            fetchAnswersSql.append(" and a.authorid = ").append(authorId);
         }
 
         if (start != null && start != 0) {
@@ -248,7 +231,7 @@ public class QADao extends CommonDao {
         // only the author can delete the answer
         Answer answerToBeDeleted = fetchAnswerById(questionId, answerId);
         if (userId == answerToBeDeleted.getAuthor().getId()) {
-            String sql = "delete from answers where questionId = " + questionId + " and answerId = " + answerId + ";";
+            String sql = "update answers set deleted='t' where questionid = " + questionId + " and answerid = " + answerId + ";";
             executeUpdate(sql);
 
             // update answer count for the question
@@ -256,6 +239,36 @@ public class QADao extends CommonDao {
             executeUpdate(sql);
         } else {
             throw new WebApplicationException("you don't have the permissions to delete this answer", Response.Status.BAD_REQUEST);
+        }
+    }
+
+    public void deleteQuestion(long questionId, long userId) {
+        QuestionDetails questionDetails = fetchQuestionById(questionId);
+        if (userId == questionDetails.getAuthor().getId()) {
+            String sql = "update questions set deleted='t' where id=" + questionId + ";";
+            executeUpdate(sql);
+        } else {
+            throw new WebApplicationException("you don't have the permissions to delete this question", Response.Status.BAD_REQUEST);
+        }
+    }
+
+    public void modifyQuestion(Long questionId, long id, String question) {
+        QuestionDetails questionDetails = fetchQuestionById(questionId);
+        if (id == questionDetails.getAuthor().getId()) {
+            String sql = "update questions set question='" + question + "' where id= " + questionId;
+            executeUpdate(sql);
+        } else {
+            throw new WebApplicationException("you don't have the permissions to modify this question", Response.Status.BAD_REQUEST);
+        }
+    }
+
+    public void modifyAnswer(Long questionId, Long answerId, long id, String answer) {
+        Answer dbAnswer = fetchAnswerById(questionId, answerId);
+        if (dbAnswer.getAuthor().getId() == id) {
+            String sql = "update answers set answer='" + answer + "' where questionid = " + questionId + " and answerid= " + answerId;
+            executeUpdate(sql);
+        } else {
+            throw new WebApplicationException("you don't have the permissions to modify this answer", Response.Status.BAD_REQUEST);
         }
     }
 }
