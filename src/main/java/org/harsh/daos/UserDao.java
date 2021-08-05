@@ -2,7 +2,6 @@ package org.harsh.daos;
 
 import lombok.extern.slf4j.Slf4j;
 import org.harsh.domain.AuthInfo;
-import org.harsh.domain.IdType;
 import org.harsh.domain.UserInfo;
 import org.harsh.utils.db.DBUtils;
 

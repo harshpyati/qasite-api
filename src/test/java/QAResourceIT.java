@@ -30,6 +30,7 @@ public class QAResourceIT {
         Response loginResponse = target.path("/user/login").request().post(Entity.json(credentials));
         assert loginResponse.getStatus() == 200;
         userInfo = loginResponse.readEntity(UserInfo.class);
+        System.out.println(userInfo.getAccessToken());
     }
 
     @Test
@@ -166,6 +167,21 @@ public class QAResourceIT {
         question = null;
     }
 
+    @Test()
+    public void getQuestionsByTitle() {
+        Response response = target
+                .path(BASE_URL_FOR_QA)
+                .queryParam("title", "crypto terms")
+                .request()
+                .header("Authorization", "Bearer " + userInfo.getAccessToken())
+                .get();
+
+        assert response.getStatus() == 200;
+        System.out.println("Questions: " + response.readEntity(new GenericType<List<QuestionDetails>>() {
+        }));
+
+    }
+
     @AfterTest
     public void logoutUser() {
         // this can be done only on client side
@@ -174,7 +190,7 @@ public class QAResourceIT {
     @DataProvider
     public Object[][] getSampleQuestion() {
         QuestionDetails details = new QuestionDetails() {{
-            setQuestions("Explain Quantum Physics in 5 mins?");
+            setQuestions("crypto terms 2?");
             setAuthor(new AuthorInfo() {{
                 setId(userInfo.getId());
             }});

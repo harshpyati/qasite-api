@@ -40,7 +40,7 @@ public class QADao extends CommonDao {
         }
 
         if (ValidationUtils.isNotNull(title) && !title.isEmpty()) {
-            sql += " and to_tsvector('english',q.question) @@ to_tsquery('english','" + title + "')";
+            sql += " and to_tsvector('english',q.question) @@ plainto_tsquery('english','" + title + "')";
         }
 
         System.out.println("Fetch Questions: " + sql);
