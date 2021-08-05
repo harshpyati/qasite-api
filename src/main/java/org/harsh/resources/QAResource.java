@@ -31,6 +31,17 @@ public class QAResource {
         return service.addQuestion(details, accessToken);
     }
 
+    @PUT
+    @Path("/{questionId}")
+    public Response modifyQuestion(
+            @Context ContainerRequestContext context,
+            @PathParam("questionId") Long questionId,
+            QuestionDetails question
+    ) {
+        String accessToken = DBUtils.getAccessToken(context);
+        return service.modifyQuestion(accessToken, questionId, question);
+    }
+
     @GET
     @Secured
     public Response getQuestions(@QueryParam("title") String title,
@@ -62,7 +73,7 @@ public class QAResource {
     @PATCH
     @Path("/{id}/vote")
     @Secured
-    public void updateUpVotes(
+    public void updateVotesForQuestions(
             @Context ContainerRequestContext ctxt,
             @PathParam("id") Long questionId,
             @QueryParam("direction") int direction) {
@@ -93,17 +104,6 @@ public class QAResource {
             e.printStackTrace();
         }
 
-    }
-
-    @PUT
-    @Path("/{questionId}")
-    public Response modifyQuestion(
-            @Context ContainerRequestContext context,
-            @PathParam("questionId") Long questionId,
-            QuestionDetails question
-    ) {
-        String accessToken = DBUtils.getAccessToken(context);
-        return service.modifyQuestion(accessToken, questionId, question);
     }
 
     @PUT

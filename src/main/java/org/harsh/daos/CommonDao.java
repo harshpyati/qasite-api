@@ -19,7 +19,7 @@ public class CommonDao {
         }
     }
 
-    public Long executeUpdateAndReturnId(String sql, IdType idType) {
+    public Long executeUpdateAndReturnId(String sql) {
         try (Connection con = DBUtils.getDBConnection()) {
             PreparedStatement ps = con.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             int rows = ps.executeUpdate();

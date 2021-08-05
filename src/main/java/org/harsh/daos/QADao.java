@@ -16,7 +16,7 @@ public class QADao extends CommonDao {
 
     public QuestionDetails postQuestion(QuestionDetails details, long userId) {
         String sql = "insert into questions(question) values('" + details.getQuestions() + "');";
-        Long id = executeUpdateAndReturnId(sql, IdType.INTEGER);
+        Long id = executeUpdateAndReturnId(sql);
         if (id != null) {
             sql = "insert into authorinfo(authorid,questionid) values(" + userId + "," + id + ")";
             executeUpdate(sql);
@@ -31,10 +31,6 @@ public class QADao extends CommonDao {
                 " inner join authorinfo a on q.id=a.questionid" +
                 " inner join users u on a.authorid=u.id where q.deleted='f' ";
 
-        if (ValidationUtils.isNotNull(title) && !title.isEmpty()) {
-            sql += " and to_tsvector('english',q.question) @@ to_tsquery('english','" + title + "')";
-        }
-
         if (id != null) {
             sql += " and q.id = " + id;
         }
@@ -42,6 +38,11 @@ public class QADao extends CommonDao {
         if (authorId != null) {
             sql += " and u.id = " + authorId;
         }
+
+        if (ValidationUtils.isNotNull(title) && !title.isEmpty()) {
+            sql += " and to_tsvector('english',q.question) @@ to_tsquery('english','" + title + "')";
+        }
+
         System.out.println("Fetch Questions: " + sql);
         List<QuestionDetails> questions = new ArrayList<>();
         try (Connection dbConn = DBUtils.getDBConnection(); Statement statement = dbConn.createStatement()) {
@@ -172,7 +173,7 @@ public class QADao extends CommonDao {
             fetchAnswersSql.append(" limit ").append(limit);
         }
         log.debug("SQL to fetch answers: {}-{}", questionId, fetchAnswersSql);
-        System.out.println("SQL to fetch Anwers for question id" + questionId + " :" + fetchAnswersSql);
+        System.out.println("SQL to fetch Answers for question id" + questionId + " :" + fetchAnswersSql);
         List<Answer> answers = new ArrayList<>();
         try (Connection connection = DBUtils.getDBConnection(); Statement stmnt = connection.createStatement()) {
             ResultSet rs = stmnt.executeQuery(fetchAnswersSql.toString());
@@ -214,7 +215,7 @@ public class QADao extends CommonDao {
     public Answer answerQuestion(Answer answer) {
         String sql = "insert into answers(answer, questionid,authorid) values ('" + answer.getAnswer() + "'," + answer.getQuestion().getId() + "," + answer.getAuthor().getId() + ");";
         System.out.println("SQL to insert answer: {}" + sql);
-        Long id = executeUpdateAndReturnId(sql, IdType.LONG);
+        Long id = executeUpdateAndReturnId(sql);
         if (id != null) {
             answer.setAnswerId(id);
             answer.setNumUpVotes(0);
