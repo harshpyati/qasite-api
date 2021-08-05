@@ -21,7 +21,7 @@ public class UserDao extends CommonDao {
         String sql = "insert into users (name, email,dob, created_at) values ('"
                 + user.getName() + "','" + user.getEmail() + "','" + userDob + "',"
                 + user.getCreatedAt() + ");";
-        Long id = executeUpdateAndReturnId(sql, IdType.LONG);
+        Long id = executeUpdateAndReturnId(sql);
         if (id != null) {
             String accessToken = DBUtils.generateAccessToken();
             String authSql = "insert into authdetails(id, email, password, access_token" +
