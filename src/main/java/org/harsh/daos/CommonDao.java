@@ -1,6 +1,5 @@
 package org.harsh.daos;
 
-import org.harsh.domain.IdType;
 import org.harsh.utils.db.DBUtils;
 
 import javax.ws.rs.WebApplicationException;
