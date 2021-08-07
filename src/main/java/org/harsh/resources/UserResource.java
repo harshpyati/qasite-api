@@ -20,9 +20,6 @@ public class UserResource {
     @Inject
     UserService service;
 
-    @Inject
-    QAService qaService;
-
     @POST
     @Path("/signup")
     public Response createUser(UserInfo user) {

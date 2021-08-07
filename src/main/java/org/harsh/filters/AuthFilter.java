@@ -1,6 +1,7 @@
 package org.harsh.filters;
 
 import org.harsh.filters.annotations.Secured;
+import org.harsh.utils.ValidationUtils;
 import org.harsh.utils.db.DBUtils;
 
 import javax.annotation.Priority;
@@ -39,7 +40,7 @@ public class AuthFilter implements ContainerRequestFilter {
         String accessToken = null;
         if (authHeader != null) {
             accessToken = authHeader.substring(AUTH_SCHEME.length()).trim();
-        }else {
+        } else {
             containerRequestContext.abortWith(Response.status(Response.Status.UNAUTHORIZED).build());
         }
         try {
@@ -64,8 +65,11 @@ public class AuthFilter implements ContainerRequestFilter {
             while (rs.next()) {
                 time = rs.getLong("access_token_time");
             }
-
-            return time != null;
+            if (time != null) {
+                long tokenExpired = System.currentTimeMillis() - time;
+                return tokenExpired < ValidationUtils.TIME_BETWEEN_LOGIN;
+            }
+            return false;
         } catch (SQLException ex) {
             throw new Exception(ex.getMessage());
         }

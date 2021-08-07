@@ -61,8 +61,10 @@ public class QADao extends CommonDao {
                 details.setNumUpVotes(rs.getLong("upvotes"));
                 details.setNumDownVotes(rs.getLong("downvotes"));
                 details.setNumAnswers(rs.getLong("answers"));
-                String[] fetchedTags = (String[]) rs.getArray("tags").getArray();
-                details.setTags(Arrays.asList(fetchedTags));
+                Array fetchedTags = rs.getArray("tags");
+                if (fetchedTags != null){
+                    details.setTags(Arrays.asList((String [])fetchedTags.getArray()));
+                }
                 AuthorInfo info = new AuthorInfo();
                 info.setId(rs.getInt("authorid"));
                 info.setName(rs.getString("name"));
