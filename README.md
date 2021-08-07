@@ -44,7 +44,7 @@ as of now.</p>
 <h2>Additional Features Planned</h2>
 
 <ul>
-    <li>Posting question/answer only if the user has certain reputations(points)</li>
+    <li>Posting answer and allowing upvote/downvote on questions/answers only if the user has certain reputations(points)</li>
     <li>Statistics reporting for the user</li>
 </ul>
 
