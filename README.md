@@ -41,4 +41,11 @@ as of now.</p>
 
 </ul>
 
+<h2>Additional Features Planned</h2>
+
+<ul>
+    <li>Posting question/answer only if the user has certain reputations(points)</li>
+    <li>Statistics reporting for the user</li>
+</ul>
+
 <h2>Will update the db setup with details soon</h2>
