@@ -12,6 +12,7 @@ import javax.ws.rs.client.Entity;
 import javax.ws.rs.client.WebTarget;
 import javax.ws.rs.core.GenericType;
 import javax.ws.rs.core.Response;
+import java.util.Arrays;
 import java.util.List;
 
 public class QAResourceIT {
@@ -36,6 +37,19 @@ public class QAResourceIT {
     @Test
     public void getQuestions() {
         Response fetchQuestions = target.path(BASE_URL_FOR_QA)
+                .request()
+                .header("Authorization", "Bearer " + userInfo.getAccessToken())
+                .get();
+
+        assert fetchQuestions.getStatus() == 200;
+        System.out.println("Questions: " + fetchQuestions.readEntity(new GenericType<List<QuestionDetails>>() {
+        }));
+    }
+
+    @Test
+    public void getQuestionsByTags() {
+        Response fetchQuestions = target.path(BASE_URL_FOR_QA)
+                .queryParam("tags", "eth")
                 .request()
                 .header("Authorization", "Bearer " + userInfo.getAccessToken())
                 .get();
@@ -194,6 +208,7 @@ public class QAResourceIT {
             setAuthor(new AuthorInfo() {{
                 setId(userInfo.getId());
             }});
+            setTags(Arrays.asList("eth", "nft", "doge"));
         }};
         return new Object[][]{{details}};
     }

@@ -5,6 +5,7 @@ import org.harsh.utils.db.DBUtils;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import java.sql.*;
+import java.util.List;
 
 public class CommonDao {
     public void executeUpdate(String sql) {
@@ -51,5 +52,18 @@ public class CommonDao {
         }
 
         return count;
+    }
+
+    public String getPsqlCompatibleArrayFromStringList(List<String> stringList) {
+        StringBuilder psqlString = new StringBuilder("{");
+        for (int i = 0; i < stringList.size(); i++) {
+            if (i != 0) {
+                psqlString.append(",");
+            }
+
+            psqlString.append(stringList.get(i));
+        }
+        psqlString.append("}");
+        return psqlString.toString();
     }
 }

@@ -14,6 +14,7 @@ import javax.ws.rs.container.ContainerRequestContext;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.util.List;
 
 @Slf4j
 @Path("/question")
@@ -45,8 +46,9 @@ public class QAResource {
     @GET
     @Secured
     public Response getQuestions(@QueryParam("title") String title,
-                                 @QueryParam("tag") String tag) {
-        return service.getQuestions(title != null ? title : "", tag);
+                                 @QueryParam("tags") final List<String> tags) {
+        System.out.println("tags" + tags);
+        return service.getQuestions(title != null ? title : "", tags);
     }
 
     @GET

@@ -35,9 +35,9 @@ public class QAService {
         }
     }
 
-    public Response getQuestions(String title, String tag) {
+    public Response getQuestions(String title, List<String> tags) {
         try {
-            List<QuestionDetails> questions = dao.getQuestions(title, null, null);
+            List<QuestionDetails> questions = dao.getQuestions(title, null, null, tags);
             return Response.ok().entity(questions).build();
         } catch (Exception ex) {
             throw new WebApplicationException(ex.getMessage(), Response.Status.BAD_REQUEST);
