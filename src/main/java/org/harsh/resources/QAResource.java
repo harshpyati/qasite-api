@@ -17,7 +17,7 @@ import javax.ws.rs.core.Response;
 import java.util.List;
 
 @Slf4j
-@Path("/question")
+@Path("/questions")
 @Produces(MediaType.APPLICATION_JSON)
 public class QAResource {
 
