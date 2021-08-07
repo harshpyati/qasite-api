@@ -9,13 +9,15 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import java.sql.*;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Slf4j
 public class QADao extends CommonDao {
 
     public QuestionDetails postQuestion(QuestionDetails details, long userId) {
-        String sql = "insert into questions(question) values('" + details.getQuestions() + "');";
+        String sql = "insert into questions(question,tags) values('" + details.getQuestions() + "','" + getPsqlCompatibleArrayFromStringList(details.getTags()) + "');";
+        System.out.println("sql: " + sql);
         Long id = executeUpdateAndReturnId(sql);
         if (id != null) {
             sql = "insert into authorinfo(authorid,questionid) values(" + userId + "," + id + ")";
@@ -26,8 +28,8 @@ public class QADao extends CommonDao {
         throw new WebApplicationException("failed to insert", Response.Status.INTERNAL_SERVER_ERROR);
     }
 
-    public List<QuestionDetails> getQuestions(String title, Long id, Integer authorId) {
-        String sql = "select q.id, q.question, q.upvotes, q.downvotes, q.answers, a.authorid, u.name from questions q" +
+    public List<QuestionDetails> getQuestions(String title, Long id, Integer authorId, List<String> tags) {
+        String sql = "select q.id, q.question, q.upvotes, q.downvotes, q.answers, q.tags, a.authorid, u.name from questions q" +
                 " inner join authorinfo a on q.id=a.questionid" +
                 " inner join users u on a.authorid=u.id where q.deleted='f' ";
 
@@ -39,11 +41,16 @@ public class QADao extends CommonDao {
             sql += " and u.id = " + authorId;
         }
 
+        if (ValidationUtils.isNotNull(tags) && !tags.isEmpty()) {
+            sql += " and q.tags @> '" + getPsqlCompatibleArrayFromStringList(tags) + "'";
+        }
+
         if (ValidationUtils.isNotNull(title) && !title.isEmpty()) {
             sql += " and to_tsvector('english',q.question) @@ plainto_tsquery('english','" + title + "')";
         }
 
         System.out.println("Fetch Questions: " + sql);
+        System.out.println("tags: " + tags);
         List<QuestionDetails> questions = new ArrayList<>();
         try (Connection dbConn = DBUtils.getDBConnection(); Statement statement = dbConn.createStatement()) {
             ResultSet rs = statement.executeQuery(sql);
@@ -54,6 +61,8 @@ public class QADao extends CommonDao {
                 details.setNumUpVotes(rs.getLong("upvotes"));
                 details.setNumDownVotes(rs.getLong("downvotes"));
                 details.setNumAnswers(rs.getLong("answers"));
+                String[] fetchedTags = (String[]) rs.getArray("tags").getArray();
+                details.setTags(Arrays.asList(fetchedTags));
                 AuthorInfo info = new AuthorInfo();
                 info.setId(rs.getInt("authorid"));
                 info.setName(rs.getString("name"));
@@ -68,7 +77,7 @@ public class QADao extends CommonDao {
     }
 
     public QuestionDetails fetchQuestionById(Long id) {
-        List<QuestionDetails> questions = getQuestions(null, id, null);
+        List<QuestionDetails> questions = getQuestions(null, id, null, null);
         if (questions == null || questions.isEmpty()) {
             throw new WebApplicationException("Question doesn't exists", Response.Status.BAD_REQUEST);
         }
@@ -76,7 +85,7 @@ public class QADao extends CommonDao {
     }
 
     public List<QuestionDetails> getQuestionsByAuthor(int authorId) {
-        List<QuestionDetails> questionDetails = getQuestions(null, null, authorId);
+        List<QuestionDetails> questionDetails = getQuestions(null, null, authorId, null);
         if (questionDetails == null || questionDetails.isEmpty()) {
             throw new WebApplicationException("This author hasn't asked any questions", Response.Status.BAD_REQUEST);
         }
